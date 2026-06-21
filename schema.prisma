@@ -1,0 +1,161 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                  String                     @id @default(cuid())
+  name                String
+  email               String                     @unique
+  password            String
+  role                Role   @default(user)
+  avatarUrl           String?
+  orders              Order[]
+  conversations       ConversationParticipant[]
+  createdConversations Conversation[]
+  sentMessages        Message[]
+  readReceipts        MessageRead[]
+  reactions           MessageReaction[]
+  createdInviteCodes  InviteCode[]
+  createdAt           DateTime                   @default(now())
+  updatedAt           DateTime                   @updatedAt
+}
+
+model Order {
+  id                 String   @id @default(cuid())
+  title              String
+  clientName         String
+  category           String   @default("عام")
+  service            String   @default("عام")
+  urgency            String   @default("عادي")
+  date               String
+  description        String?
+  status             String   @default("متاح")
+  uploadedFile       String?
+  assignedEmployee   User?    @relation(fields: [assignedEmployeeId], references: [id])
+  assignedEmployeeId String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
+
+model Category {
+  id             String          @id @default(cuid())
+  name           String          @unique
+  portfolioItems PortfolioItem[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+}
+
+model PortfolioItem {
+  id          String   @id @default(cuid())
+  title       String
+  coverImage  String?  // تعديل: صورة الغلاف (اختيارية) 
+  samplePdf   String?  // إضافة: ملف العينة (اختياري)
+  description String
+  isVisible   Boolean  @default(true) // إضافة: التحكم في ظهور العمل للعميل
+  category    Category @relation(fields: [categoryId], references: [id]) // ربط بالتصنيفات
+  categoryId  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Conversation {
+  id           String                     @id @default(cuid())
+  title        String?
+  isGroup      Boolean                    @default(false)
+  createdById  String?
+  createdBy    User?                      @relation(fields: [createdById], references: [id])
+  participants ConversationParticipant[]
+  messages     Message[]
+  inviteCodes  InviteCode[]
+  createdAt    DateTime                   @default(now())
+  updatedAt    DateTime                   @updatedAt
+}
+
+model InviteCode {
+  id             String       @id @default(cuid())
+  code           String       @unique
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdById    String
+  createdBy      User         @relation(fields: [createdById], references: [id])
+  expiresAt      DateTime?
+  maxUses        Int          @default(1)
+  usedCount      Int          @default(0)
+  isActive       Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+}
+
+model ConversationParticipant {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt       DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String           @id @default(cuid())
+  content        String
+  senderId       String
+  sender         User             @relation(fields: [senderId], references: [id])
+  conversationId String
+  conversation   Conversation     @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  attachments    Attachment[]
+  readAt         DateTime?
+  readBy         MessageRead[]
+  reactions      MessageReaction[]
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+}
+
+model MessageRead {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt    DateTime @default(now())
+
+  @@unique([messageId, userId])
+}
+
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId])
+}
+
+model Attachment {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  fileName  String
+  fileSize  Int
+  mimeType  String
+  url       String
+  publicId  String?
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  admin
+  hr
+  employee
+  user
+}

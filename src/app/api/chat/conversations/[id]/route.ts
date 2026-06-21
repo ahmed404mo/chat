@@ -1,0 +1,106 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import { getUserFromToken, canManageChats } from "@/lib/auth";
+import { deleteFiles } from "@/lib/cloudinary";
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const user = getUserFromToken(req);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!canManageChats(user.role)) {
+    return NextResponse.json(
+      { error: "Only Admin and HR can rename groups" },
+      { status: 403 }
+    );
+  }
+
+  try {
+    const { id } = await params;
+    const { title } = await req.json();
+
+    if (!title || !title.trim()) {
+      return NextResponse.json(
+        { error: "Title is required" },
+        { status: 400 }
+      );
+    }
+
+    const conversation = await prisma.conversation.findUnique({ where: { id } });
+    if (!conversation) {
+      return NextResponse.json(
+        { error: "Conversation not found" },
+        { status: 404 }
+      );
+    }
+
+    const updated = await prisma.conversation.update({
+      where: { id },
+      data: { title: title.trim() },
+    });
+
+    return NextResponse.json({ conversation: updated });
+  } catch (err) {
+    console.error("Rename conversation error:", err);
+    const message =
+      err instanceof Error ? err.message : "Failed to rename conversation";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const user = getUserFromToken(req);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (!canManageChats(user.role)) {
+    return NextResponse.json(
+      { error: "Only Admin and HR can delete groups" },
+      { status: 403 }
+    );
+  }
+
+  try {
+    const { id } = await params;
+
+    const conversation = await prisma.conversation.findUnique({ where: { id } });
+    if (!conversation) {
+      return NextResponse.json(
+        { error: "Conversation not found" },
+        { status: 404 }
+      );
+    }
+
+    // Collect all Cloudinary publicIds from attachments in this conversation
+    const attachments = await prisma.attachment.findMany({
+      where: { message: { conversationId: id } },
+      select: { publicId: true },
+    });
+    const publicIds = attachments
+      .map((a) => a.publicId)
+      .filter((pid): pid is string => pid !== null);
+
+    // Delete files from Cloudinary
+    if (publicIds.length > 0) {
+      await deleteFiles(publicIds);
+    }
+
+    // Delete the conversation (cascade handles messages, participants, inviteCodes, attachments)
+    await prisma.conversation.delete({ where: { id } });
+
+    return NextResponse.json({ message: "Group deleted successfully" });
+  } catch (err) {
+    console.error("Delete conversation error:", err);
+    const message =
+      err instanceof Error ? err.message : "Failed to delete conversation";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
