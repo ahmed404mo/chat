@@ -58,7 +58,10 @@ export async function POST(
       },
       select: { userId: true },
     });
-const existingUserIds = new Set(existingParticipants.map((p: { userId: string }) => p.userId));
+
+    // تم التأكد من تعريف نوع p صراحةً هنا
+    const existingUserIds = new Set(existingParticipants.map((p: { userId: string }) => p.userId));
+    
     const newUserIds = userIds.filter(
       (uid: string) => !existingUserIds.has(uid)
     );
