@@ -85,10 +85,10 @@ export async function DELETE(
       select: { publicId: true },
     });
 
-    // التعديل هنا: تحديد نوع المتغير a صراحةً
+    // التعديل الصحيح لتفادي خطأ الـ any:
     const publicIds = attachments
       .map((a: { publicId: string | null }) => a.publicId)
-      .filter((pid): pid is string => pid !== null);
+      .filter((pid: string | null): pid is string => pid !== null);
 
     // Delete files from Cloudinary
     if (publicIds.length > 0) {
