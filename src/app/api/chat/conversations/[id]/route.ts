@@ -84,8 +84,10 @@ export async function DELETE(
       where: { message: { conversationId: id } },
       select: { publicId: true },
     });
+
+    // التعديل هنا: تحديد نوع المتغير a صراحةً
     const publicIds = attachments
-      .map((a) => a.publicId)
+      .map((a: { publicId: string | null }) => a.publicId)
       .filter((pid): pid is string => pid !== null);
 
     // Delete files from Cloudinary
