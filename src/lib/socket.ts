@@ -1,78 +1,64 @@
 "use client";
 
-import { io, Socket } from "socket.io-client";
+import Pusher from "pusher-js";
 
-let socket: Socket | null = null;
-let disconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+let pusherClient: Pusher | null = null;
+let subscribedChannels: Set<string> = new Set();
 
-function isTokenExpired(token: string): boolean {
-  try {
-    const payload = JSON.parse(atob(token.split(".")[1]));
-    return payload.exp * 1000 < Date.now();
-  } catch {
-    return true;
-  }
+export function getSocket(): Pusher | null {
+  return pusherClient;
 }
 
-export function getSocket(): Socket | null {
-  return socket;
+export function getPusherClient(): Pusher | null {
+  return pusherClient;
 }
 
-export function connectSocket(token: string, onAuthError?: () => void): Socket {
-  if (socket?.connected) {
-    // Check if the current token is still valid
-    if (isTokenExpired(token)) {
-      onAuthError?.();
-      return socket;
-    }
-    return socket;
+export function connectSocket(token: string, onAuthError?: () => void): Pusher {
+  if (pusherClient) {
+    pusherClient.disconnect();
+    subscribedChannels.clear();
   }
 
-  if (isTokenExpired(token)) {
-    onAuthError?.();
-    if (disconnectTimeout) clearTimeout(disconnectTimeout);
-    disconnectTimeout = setTimeout(() => {
-      if (socket) {
-        socket.disconnect();
-        socket = null;
-      }
-    }, 0);
-    return socket!;
-  }
-
-  socket = io({
-    auth: { token },
-    transports: ["websocket", "polling"],
-    reconnection: true,
-    reconnectionAttempts: 3,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
+  pusherClient = new Pusher(process.env.NEXT_PUBLIC_PUSHER_KEY!, {
+    cluster: process.env.NEXT_PUBLIC_PUSHER_CLUSTER!,
+    authEndpoint: "/api/pusher/auth",
+    auth: {
+      headers: {
+        authorization: `Bearer ${token}`,
+      },
+    },
   });
 
-  socket.on("connect_error", (err) => {
-    console.error("Socket connection error:", err.message);
-    if (
-      err.message === "Invalid token" ||
-      err.message === "Authentication required"
-    ) {
-      if (disconnectTimeout) clearTimeout(disconnectTimeout);
-      disconnectTimeout = setTimeout(() => {
-        if (socket) {
-          socket.disconnect();
-          socket = null;
-        }
-      }, 100);
+  pusherClient.connection.bind("error", (err: any) => {
+    console.error("Pusher connection error:", err);
+    if (err?.error?.type === "AuthError") {
       onAuthError?.();
     }
   });
 
-  return socket;
+  return pusherClient;
 }
 
 export function disconnectSocket(): void {
-  if (disconnectTimeout) clearTimeout(disconnectTimeout);
-  if (socket) {
-    socket.disconnect();
-    socket = null;
+  if (pusherClient) {
+    subscribedChannels.forEach((channelName) => {
+      pusherClient?.unsubscribe(channelName);
+    });
+    subscribedChannels.clear();
+    pusherClient.disconnect();
+    pusherClient = null;
   }
+}
+
+export function subscribeToChannel(channelName: string): any {
+  if (!pusherClient) return null;
+  if (subscribedChannels.has(channelName)) return null;
+  subscribedChannels.add(channelName);
+  return pusherClient.subscribe(channelName);
+}
+
+export function unsubscribeFromChannel(channelName: string): void {
+  if (!pusherClient) return;
+  subscribedChannels.delete(channelName);
+  pusherClient.unsubscribe(channelName);
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { pusher } from "@/lib/pusher-server";
 import { getUserFromToken, canManageChats } from "@/lib/auth";
 import { deleteFiles } from "@/lib/cloudinary";
 
@@ -41,6 +42,11 @@ export async function PATCH(
     const updated = await prisma.conversation.update({
       where: { id },
       data: { title: title.trim() },
+    });
+
+    await pusher.trigger(`private-conversation-${id}`, "conversation-updated", {
+      conversationId: id,
+      title: title.trim(),
     });
 
     return NextResponse.json({ conversation: updated });

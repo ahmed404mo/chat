@@ -9,7 +9,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { getSocket } from "@/lib/socket";
+import { getPusherClient, subscribeToChannel, unsubscribeFromChannel } from "@/lib/socket";
 import { useAuth } from "./AuthContext";
 
 interface Attachment {
@@ -116,6 +116,14 @@ interface SocketContextType {
 
 const SocketContext = createContext<SocketContextType | null>(null);
 
+function authHeaders(token: string | null): Record<string, string> {
+  return token ? { authorization: `Bearer ${token}` } : {};
+}
+
+function authJson(token: string | null): Record<string, string> {
+  return { "Content-Type": "application/json", ...authHeaders(token) };
+}
+
 export function SocketProvider({ children }: { children: ReactNode }) {
   const { user, token } = useAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -132,16 +140,14 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   activeConversationRef.current = activeConversation;
   const userRef = useRef(user);
   userRef.current = user;
-  const pendingTemps = useRef<Set<string>>(new Set());
+  const subscribedConversations = useRef<Set<string>>(new Set());
   const isManager = user?.role === "admin" || user?.role === "hr";
 
-  // Pre-initialise notification audio once
   useEffect(() => {
     if (!notificationAudio.current) {
       notificationAudio.current = new Audio("/notification.mp3");
       notificationAudio.current.volume = 0.4;
     }
-    // Request notification permission on mount (after user gesture has happened)
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
@@ -172,7 +178,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const fetchUsers = useCallback(async () => {
     try {
       const res = await fetch("/api/users", {
-        headers: { authorization: `Bearer ${token}` },
+        headers: authHeaders(token),
       });
       if (res.ok) {
         const data = await res.json();
@@ -187,7 +193,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     if (!token) return;
     try {
       const res = await fetch("/api/chat/conversations", {
-        headers: { authorization: `Bearer ${token}` },
+        headers: authHeaders(token),
       });
       if (!res.ok) return;
       const data = await res.json();
@@ -203,7 +209,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         const cursor = cursors.current[conversationId] || "";
         const url = `/api/chat/messages?conversationId=${conversationId}${cursor ? `&cursor=${cursor}` : ""}`;
         const res = await fetch(url, {
-          headers: { authorization: `Bearer ${token}` },
+          headers: authHeaders(token),
         });
         if (!res.ok) return;
         const data = await res.json();
@@ -239,246 +245,231 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     if (isManager) fetchUsers();
   }, [user, token, fetchConversations, fetchUsers, isManager]);
 
+  // Subscribe to Pusher channels for each conversation
   useEffect(() => {
-    const socket = getSocket();
-    if (!socket) return;
+    const pusher = getPusherClient();
+    if (!pusher || conversations.length === 0) return;
 
-    const handleConnect = () => {
-      fetchConversations();
-      if (activeConversationRef.current) {
-        fetchMessages(activeConversationRef.current);
+    const currentSubscribed = new Set(subscribedConversations.current);
+    const conversationIds = new Set(conversations.map((c) => c.id));
+
+    // Unsubscribe from conversations no longer in list
+    currentSubscribed.forEach((convId) => {
+      if (!conversationIds.has(convId)) {
+        unsubscribeFromChannel(`private-conversation-${convId}`);
+        subscribedConversations.current.delete(convId);
       }
-    };
-    socket.on("connect", handleConnect);
+    });
 
-    const handleNewMessage = (message: Message) => {
-      setMessages((prev) => {
-        const convMessages = prev[message.conversationId] || [];
-        const hasTemp = convMessages.some((m) => m.id.startsWith("temp-"));
-        if (hasTemp) {
-          const real = convMessages.filter((m) => !m.id.startsWith("temp-"));
-          if (real.some((m) => m.id === message.id)) return prev;
-          return { ...prev, [message.conversationId]: [...real, message] };
-        }
-        if (convMessages.some((m) => m.id === message.id)) return prev;
-        return { ...prev, [message.conversationId]: [...convMessages, message] };
-      });
-      setConversations((prev) => {
-        const updated = prev.map((c) =>
-          c.id === message.conversationId
-            ? { ...c, messages: [message], updatedAt: message.createdAt }
-            : c
-        );
-        if (!updated.find((c) => c.id === message.conversationId)) {
-          fetchConversations();
-          return prev;
-        }
-        return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-      });
-      const currentUser = userRef.current;
-      const currentActive = activeConversationRef.current;
-      if (currentUser && message.senderId !== currentUser.id) {
-        if (currentActive !== message.conversationId) {
-          setUnreadCounts((prev) => ({
-            ...prev,
-            [message.conversationId]: (prev[message.conversationId] || 0) + 1,
-          }));
-        }
-        // Notify for messages from others
-        if (document.hidden) {
-          showBrowserNotification(
-            message.sender?.name || "Someone",
-            message.content || "Sent a file",
-            message.conversationId
+    // Subscribe to new conversations
+    conversations.forEach((conv) => {
+      const channelName = `private-conversation-${conv.id}`;
+      if (subscribedConversations.current.has(conv.id)) return;
+
+      const channel = subscribeToChannel(channelName);
+      if (!channel) return;
+      subscribedConversations.current.add(conv.id);
+
+      channel.bind("new-message", (message: Message) => {
+        setMessages((prev) => {
+          const convMessages = prev[message.conversationId] || [];
+          const hasTemp = convMessages.some((m) => m.id.startsWith("temp-"));
+          if (hasTemp) {
+            const real = convMessages.filter((m) => !m.id.startsWith("temp-"));
+            if (real.some((m) => m.id === message.id)) return prev;
+            return { ...prev, [message.conversationId]: [...real, message] };
+          }
+          if (convMessages.some((m) => m.id === message.id)) return prev;
+          return { ...prev, [message.conversationId]: [...convMessages, message] };
+        });
+        setConversations((prev) => {
+          const updated = prev.map((c) =>
+            c.id === message.conversationId
+              ? { ...c, messages: [message], updatedAt: message.createdAt }
+              : c
           );
-        } else {
-          if (notificationAudio.current) {
-            const audio = notificationAudio.current;
-            audio.currentTime = 0;
-            audio.play().catch(() => {
-              const fallback = new Audio("/notification.mp3");
-              fallback.volume = 0.4;
-              fallback.play().catch(() => {});
-            });
+          if (!updated.find((c) => c.id === message.conversationId)) {
+            fetchConversations();
+            return prev;
+          }
+          return updated.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+        });
+        const currentUser = userRef.current;
+        const currentActive = activeConversationRef.current;
+        if (currentUser && message.senderId !== currentUser.id) {
+          if (currentActive !== message.conversationId) {
+            setUnreadCounts((prev) => ({
+              ...prev,
+              [message.conversationId]: (prev[message.conversationId] || 0) + 1,
+            }));
+          }
+          if (document.hidden) {
+            showBrowserNotification(
+              message.sender?.name || "Someone",
+              message.content || "Sent a file",
+              message.conversationId
+            );
+          } else {
+            if (notificationAudio.current) {
+              const audio = notificationAudio.current;
+              audio.currentTime = 0;
+              audio.play().catch(() => {
+                const fallback = new Audio("/notification.mp3");
+                fallback.volume = 0.4;
+                fallback.play().catch(() => {});
+              });
+            }
           }
         }
-      }
-    };
-
-    const handleUserTyping = ({ userId, name, conversationId }: { userId: string; name: string; conversationId: string }) => {
-      setTypingUsers((prev) => {
-        const existing = prev[conversationId] || [];
-        if (existing.find((u) => u.userId === userId)) return prev;
-        return { ...prev, [conversationId]: [...existing, { userId, name }] };
       });
-      setTimeout(() => {
+
+      channel.bind("user-typing", ({ userId, name, conversationId }: { userId: string; name: string; conversationId: string }) => {
+        setTypingUsers((prev) => {
+          const existing = prev[conversationId] || [];
+          if (existing.find((u) => u.userId === userId)) return prev;
+          return { ...prev, [conversationId]: [...existing, { userId, name }] };
+        });
+        setTimeout(() => {
+          setTypingUsers((prev) => ({
+            ...prev,
+            [conversationId]: (prev[conversationId] || []).filter((u) => u.userId !== userId),
+          }));
+        }, 3000);
+      });
+
+      channel.bind("user-stop-typing", ({ userId, conversationId }: { userId: string; conversationId: string }) => {
         setTypingUsers((prev) => ({
           ...prev,
           [conversationId]: (prev[conversationId] || []).filter((u) => u.userId !== userId),
         }));
-      }, 3000);
+      });
+
+      channel.bind("member-added", ({ conversationId: cId }: { conversationId: string }) => {
+        if (cId === activeConversationRef.current) {
+          fetchConversations();
+        }
+      });
+
+      channel.bind("conversation-updated", ({ conversationId, title }: { conversationId: string; title: string }) => {
+        setConversations((prev) =>
+          prev.map((c) => (c.id === conversationId ? { ...c, title } : c))
+        );
+      });
+
+      channel.bind("message-reaction-added", ({ messageId, conversationId, reaction }: { messageId: string; conversationId: string; reaction: Reaction }) => {
+        setMessages((prev) => {
+          const msgs = prev[conversationId];
+          if (!msgs) return prev;
+          return {
+            ...prev,
+            [conversationId]: msgs.map((m) => {
+              if (m.id !== messageId) return m;
+              const filtered = (m.reactions || []).filter((r) => r.userId !== reaction.userId);
+              return { ...m, reactions: [...filtered, reaction] };
+            }),
+          };
+        });
+      });
+
+      channel.bind("message-reaction-removed", ({ messageId, conversationId, userId }: { messageId: string; conversationId: string; userId: string }) => {
+        setMessages((prev) => {
+          const msgs = prev[conversationId];
+          if (!msgs) return prev;
+          return {
+            ...prev,
+            [conversationId]: msgs.map((m) =>
+              m.id === messageId
+                ? { ...m, reactions: (m.reactions || []).filter((r) => r.userId !== userId) }
+                : m
+            ),
+          };
+        });
+      });
+
+      channel.bind("messages-read", ({ conversationId, userId: readUserId, userName, userRole, readAt, messageIds }: {
+        conversationId: string; userId: string; userName: string; userRole: string; readAt: string; messageIds: string[];
+      }) => {
+        setMessages((prev) => {
+          const msgs = prev[conversationId];
+          if (!msgs) return prev;
+          const readSet = new Set(messageIds);
+          return {
+            ...prev,
+            [conversationId]: msgs.map((m) =>
+              readSet.has(m.id)
+                ? { ...m, readBy: [...(m.readBy || []), { userId: readUserId, user: { id: readUserId, name: userName, role: userRole }, readAt }] }
+                : m
+            ),
+          };
+        });
+      });
+
+      channel.bind("message-edited", (message: Message) => {
+        setMessages((prev) => {
+          const msgs = prev[message.conversationId];
+          if (!msgs) return prev;
+          return {
+            ...prev,
+            [message.conversationId]: msgs.map((m) =>
+              m.id === message.id ? { ...m, ...message } : m
+            ),
+          };
+        });
+      });
+
+      channel.bind("message-deleted", ({ messageId, conversationId }: { messageId: string; conversationId: string }) => {
+        setMessages((prev) => {
+          const msgs = prev[conversationId];
+          if (!msgs) return prev;
+          return {
+            ...prev,
+            [conversationId]: msgs.filter((m) => m.id !== messageId),
+          };
+        });
+      });
+    });
+  }, [conversations, fetchConversations, fetchMessages, showBrowserNotification]);
+
+  // Subscribe to presence channel for online users
+  useEffect(() => {
+    const pusher = getPusherClient();
+    if (!pusher || !token) return;
+
+    const presenceChannel = subscribeToChannel("presence-global");
+    if (!presenceChannel) return;
+
+    const handleMemberAdded = (member: any) => {
+      if (member.id !== userRef.current?.id) {
+        setOnlineUsers((prev) => new Set(prev).add(member.id));
+      }
     };
 
-    const handleUserStopTyping = ({ userId, conversationId }: { userId: string; conversationId: string }) => {
-      setTypingUsers((prev) => ({
-        ...prev,
-        [conversationId]: (prev[conversationId] || []).filter((u) => u.userId !== userId),
-      }));
-    };
-
-    const handleUserOnline = (userId: string) => {
-      setOnlineUsers((prev) => new Set(prev).add(userId));
-    };
-
-    const handleUserOffline = (userId: string) => {
+    const handleMemberRemoved = (member: any) => {
       setOnlineUsers((prev) => {
         const next = new Set(prev);
-        next.delete(userId);
+        next.delete(member.id);
         return next;
       });
     };
 
-    const handleMemberAdded = ({
-      conversationId,
-    }: {
-      conversationId: string;
-    }) => {
-      if (conversationId === activeConversation) {
-        fetchConversations();
-      }
-    };
+    // Initial members
+    presenceChannel.bind("pusher:subscription_succeeded", (members: any) => {
+      const ids: string[] = [];
+      members.each((member: any) => ids.push(member.id));
+      setOnlineUsers(new Set(ids));
+    });
 
-    const handleConversationUpdated = ({
-      conversationId,
-      title,
-    }: {
-      conversationId: string;
-      title: string;
-    }) => {
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === conversationId ? { ...c, title } : c
-        )
-      );
-    };
-
-    const handleReactionAdded = ({
-      messageId, conversationId, reaction,
-    }: {
-      messageId: string; conversationId: string; reaction: Reaction;
-    }) => {
-      setMessages((prev) => {
-        const msgs = prev[conversationId];
-        if (!msgs) return prev;
-        return {
-          ...prev,
-          [conversationId]: msgs.map((m) => {
-            if (m.id !== messageId) return m;
-            // Remove any existing reaction by this user (both temp and previous emoji), then add the real one
-            const filtered = (m.reactions || []).filter((r) => r.userId !== reaction.userId);
-            return { ...m, reactions: [...filtered, reaction] };
-          }),
-        };
-      });
-    };
-
-    const handleReactionRemoved = ({
-      messageId, conversationId, userId,
-    }: {
-      messageId: string; conversationId: string; userId: string; emoji: string;
-    }) => {
-      setMessages((prev) => {
-        const msgs = prev[conversationId];
-        if (!msgs) return prev;
-        return {
-          ...prev,
-          [conversationId]: msgs.map((m) =>
-            m.id === messageId
-              ? { ...m, reactions: (m.reactions || []).filter((r) => r.userId !== userId) }
-              : m
-          ),
-        };
-      });
-    };
-
-    const handleMessagesRead = ({
-      conversationId, userId: readUserId, userName, userRole, readAt, messageIds,
-    }: {
-      conversationId: string; userId: string; userName: string; userRole: string; readAt: string; messageIds: string[];
-    }) => {
-      setMessages((prev) => {
-        const msgs = prev[conversationId];
-        if (!msgs) return prev;
-        const readSet = new Set(messageIds);
-        return {
-          ...prev,
-          [conversationId]: msgs.map((m) =>
-            readSet.has(m.id)
-              ? { ...m, readBy: [...(m.readBy || []), { userId: readUserId, user: { id: readUserId, name: userName, role: userRole }, readAt }] }
-              : m
-          ),
-        };
-      });
-    };
-
-    const handleMessageEdited = (message: Message) => {
-      setMessages((prev) => {
-        const msgs = prev[message.conversationId];
-        if (!msgs) return prev;
-        return {
-          ...prev,
-          [message.conversationId]: msgs.map((m) =>
-            m.id === message.id ? { ...m, ...message } : m
-          ),
-        };
-      });
-    };
-
-    const handleMessageDeleted = ({ messageId, conversationId }: { messageId: string; conversationId: string }) => {
-      setMessages((prev) => {
-        const msgs = prev[conversationId];
-        if (!msgs) return prev;
-        return {
-          ...prev,
-          [conversationId]: msgs.filter((m) => m.id !== messageId),
-        };
-      });
-    };
-
-    socket.on("new-message", handleNewMessage);
-    socket.on("user-typing", handleUserTyping);
-    socket.on("user-stop-typing", handleUserStopTyping);
-    socket.on("user-online", handleUserOnline);
-    socket.on("user-offline", handleUserOffline);
-    socket.on("member-added", handleMemberAdded);
-    socket.on("conversation-updated", handleConversationUpdated);
-    socket.on("message-reaction-added", handleReactionAdded);
-    socket.on("message-reaction-removed", handleReactionRemoved);
-
-    socket.on("message-edited", handleMessageEdited);
-    socket.on("message-deleted", handleMessageDeleted);
-    socket.on("messages-read", handleMessagesRead);
+    presenceChannel.bind("pusher:member_added", handleMemberAdded);
+    presenceChannel.bind("pusher:member_removed", handleMemberRemoved);
 
     return () => {
-      socket.off("new-message", handleNewMessage);
-      socket.off("connect", handleConnect);
-      socket.off("user-typing", handleUserTyping);
-      socket.off("user-stop-typing", handleUserStopTyping);
-      socket.off("user-online", handleUserOnline);
-      socket.off("user-offline", handleUserOffline);
-      socket.off("member-added", handleMemberAdded);
-      socket.off("conversation-updated", handleConversationUpdated);
-      socket.off("message-reaction-added", handleReactionAdded);
-      socket.off("message-reaction-removed", handleReactionRemoved);
-      socket.off("message-edited", handleMessageEdited);
-      socket.off("message-deleted", handleMessageDeleted);
-      socket.off("messages-read", handleMessagesRead);
+      presenceChannel.unbind("pusher:subscription_succeeded");
+      presenceChannel.unbind("pusher:member_added", handleMemberAdded);
+      presenceChannel.unbind("pusher:member_removed", handleMemberRemoved);
     };
-  }, [fetchConversations, fetchMessages]);
+  }, [token]);
 
   const sendMessage = useCallback((conversationId: string, content: string, repliedToId?: string, files?: any[], repliedToMessage?: Message | null) => {
-    const socket = getSocket();
-    if (!socket) return;
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const role = userRef.current?.role || "user";
     const optimistic: Message = {
@@ -498,14 +489,16 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       ...prev,
       [conversationId]: [...(prev[conversationId] || []), optimistic],
     }));
-    socket.emit("send-message", { conversationId, content, repliedToId, attachments: files });
+    fetch(`/api/chat/messages`, {
+      method: "POST",
+      headers: authJson(token),
+      body: JSON.stringify({ conversationId, content, repliedToId, attachments: files }),
+    }).catch((err) => console.error("send-message error:", err));
     setUnreadCounts((prev) => ({ ...prev, [conversationId]: 0 }));
-  }, []);
+  }, [token]);
 
   const sendFileMessage = useCallback(
     (conversationId: string, content: string, attachments: Omit<Attachment, "id" | "createdAt">[]) => {
-      const socket = getSocket();
-      if (!socket) return;
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const role = userRef.current?.role || "user";
       const optimistic: Message = {
@@ -524,19 +517,31 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         ...prev,
         [conversationId]: [...(prev[conversationId] || []), optimistic],
       }));
-      socket.emit("send-message", { conversationId, content, attachments });
+      fetch(`/api/chat/messages`, {
+        method: "POST",
+        headers: authJson(token),
+        body: JSON.stringify({ conversationId, content, attachments }),
+      }).catch((err) => console.error("send-file-message error:", err));
       setUnreadCounts((prev) => ({ ...prev, [conversationId]: 0 }));
     },
-    []
+    [token]
   );
 
   const emitTyping = useCallback((conversationId: string) => {
-    getSocket()?.emit("typing", { conversationId });
-  }, []);
+    fetch("/api/chat/typing", {
+      method: "POST",
+      headers: authJson(token),
+      body: JSON.stringify({ conversationId, action: "typing" }),
+    }).catch(() => {});
+  }, [token]);
 
   const emitStopTyping = useCallback((conversationId: string) => {
-    getSocket()?.emit("stop-typing", { conversationId });
-  }, []);
+    fetch("/api/chat/typing", {
+      method: "POST",
+      headers: authJson(token),
+      body: JSON.stringify({ conversationId, action: "stop-typing" }),
+    }).catch(() => {});
+  }, [token]);
 
   const loadMoreMessages = useCallback(
     (conversationId: string) => {
@@ -549,10 +554,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const joinViaInvite = useCallback(async (code: string): Promise<string> => {
     const res = await fetch("/api/chat/invite/join", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        authorization: `Bearer ${token}`,
-      },
+      headers: authJson(token),
       body: JSON.stringify({ code: code.trim().toUpperCase() }),
     });
     const data = await res.json();
@@ -565,10 +567,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     async (conversationId: string, expiresInHours?: number, maxUses?: number): Promise<InviteInfo> => {
       const res = await fetch("/api/chat/invite", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${token}`,
-        },
+        headers: authJson(token),
         body: JSON.stringify({ conversationId, expiresInHours, maxUses }),
       });
       const data = await res.json();
@@ -582,10 +581,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     async (participantIds: string[], title?: string): Promise<Conversation> => {
       const res = await fetch("/api/chat/conversations", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${token}`,
-        },
+        headers: authJson(token),
         body: JSON.stringify({ participantIds, title }),
       });
       const data = await res.json();
@@ -600,19 +596,12 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     async (conversationId: string, userIds: string[]) => {
       const res = await fetch(`/api/chat/conversations/${conversationId}/members`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${token}`,
-        },
+        headers: authJson(token),
         body: JSON.stringify({ userIds }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to add members");
       await fetchConversations();
-      const socket = getSocket();
-      if (socket) {
-        socket.emit("member-added", { conversationId, userIds: data.added?.map((u: { id: string }) => u.id) || userIds });
-      }
       return data;
     },
     [token, fetchConversations]
@@ -622,7 +611,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     async (conversationId: string) => {
       const res = await fetch(`/api/chat/conversations/${conversationId}`, {
         method: "DELETE",
-        headers: { authorization: `Bearer ${token}` },
+        headers: authHeaders(token),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to delete group");
@@ -638,18 +627,11 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     async (conversationId: string, title: string) => {
       const res = await fetch(`/api/chat/conversations/${conversationId}`, {
         method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${token}`,
-        },
+        headers: authJson(token),
         body: JSON.stringify({ title }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to rename group");
-      const socket = getSocket();
-      if (socket) {
-        socket.emit("conversation-updated", { conversationId, title: title.trim() });
-      }
       setConversations((prev) =>
         prev.map((c) =>
           c.id === conversationId ? { ...c, title: title.trim() } : c
@@ -660,10 +642,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   );
 
   const addReaction = useCallback((messageId: string, emoji: string, conversationId: string) => {
-    const socket = getSocket();
-    if (!socket) return;
     const tempUser = userRef.current;
-    // Optimistic update
     setMessages((prev) => {
       const msgs = prev[conversationId];
       if (!msgs) return prev;
@@ -679,14 +658,15 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         }),
       };
     });
-    socket.emit("add-reaction", { messageId, emoji, conversationId });
-  }, []);
+    fetch("/api/chat/messages/reaction", {
+      method: "POST",
+      headers: authJson(token),
+      body: JSON.stringify({ messageId, emoji, conversationId }),
+    }).catch((err) => console.error("add-reaction error:", err));
+  }, [token]);
 
   const removeReaction = useCallback((messageId: string, conversationId: string) => {
-    const socket = getSocket();
-    if (!socket) return;
     const tempUser = userRef.current;
-    // Optimistic update
     setMessages((prev) => {
       const msgs = prev[conversationId];
       if (!msgs) return prev;
@@ -698,12 +678,14 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         }),
       };
     });
-    socket.emit("remove-reaction", { messageId, conversationId });
-  }, []);
+    fetch("/api/chat/messages/reaction", {
+      method: "DELETE",
+      headers: authJson(token),
+      body: JSON.stringify({ messageId, conversationId }),
+    }).catch((err) => console.error("remove-reaction error:", err));
+  }, [token]);
 
   const editMessage = useCallback((messageId: string, content: string, conversationId: string) => {
-    const socket = getSocket();
-    if (!socket) return;
     setMessages((prev) => {
       const msgs = prev[conversationId];
       if (!msgs) return prev;
@@ -714,12 +696,14 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         ),
       };
     });
-    socket.emit("edit-message", { messageId, content, conversationId });
-  }, []);
+    fetch("/api/chat/messages/edit", {
+      method: "PATCH",
+      headers: authJson(token),
+      body: JSON.stringify({ messageId, content, conversationId }),
+    }).catch((err) => console.error("edit-message error:", err));
+  }, [token]);
 
   const deleteMessage = useCallback((messageId: string, conversationId: string, forEveryone: boolean) => {
-    const socket = getSocket();
-    if (!socket) return;
     if (!forEveryone) {
       setMessages((prev) => {
         const msgs = prev[conversationId];
@@ -741,29 +725,20 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         };
       });
     }
-    socket.emit("delete-message", { messageId, conversationId, forEveryone });
-  }, []);
+    fetch("/api/chat/messages/delete", {
+      method: "POST",
+      headers: authJson(token),
+      body: JSON.stringify({ messageId, conversationId, forEveryone }),
+    }).catch((err) => console.error("delete-message error:", err));
+  }, [token]);
 
   const markAsRead = useCallback((conversationId: string) => {
-    const socket = getSocket();
-    if (!socket) return;
-    socket.emit("mark-read", { conversationId });
-  }, []);
-
-  useEffect(() => {
-    if (activeConversation) {
-      fetchMessages(activeConversation);
-      setUnreadCounts((prev) => ({ ...prev, [activeConversation]: 0 }));
-      const socket = getSocket();
-      if (socket) {
-        socket.emit("join-conversation", activeConversation, (res: { success?: boolean; error?: string }) => {
-          if (!res?.success) {
-            setActiveConversation(null);
-          }
-        });
-      }
-    }
-  }, [activeConversation, fetchMessages]);
+    fetch("/api/chat/messages/read", {
+      method: "POST",
+      headers: authJson(token),
+      body: JSON.stringify({ conversationId }),
+    }).catch(() => {});
+  }, [token]);
 
   return (
     <SocketContext.Provider

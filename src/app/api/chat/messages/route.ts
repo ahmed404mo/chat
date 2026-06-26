@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { pusher } from "@/lib/pusher-server";
 import { getUserFromToken } from "@/lib/auth";
 
 export async function GET(req: Request) {
@@ -55,21 +56,40 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { content, conversationId, repliedToId } = await req.json();
+    const { content, conversationId, repliedToId, attachments: files } = await req.json();
 
-    if (!content || !conversationId) {
+    if (!conversationId || (!content?.trim() && (!files || files.length === 0))) {
       return NextResponse.json(
         { error: "Content and conversationId are required" },
         { status: 400 },
       );
     }
 
+    const participation = await prisma.conversationParticipant.findFirst({
+      where: { conversationId, userId: user.id },
+    });
+    if (!participation) {
+      return NextResponse.json({ error: "Not a participant" }, { status: 403 });
+    }
+
     const message = await prisma.message.create({
       data: {
-        content,
+        content: content?.trim() || "",
         conversationId,
         senderId: user.id,
         repliedToId: repliedToId || null,
+        status: "DELIVERED",
+        attachments: files?.length
+          ? {
+              create: files.map((att: any) => ({
+                fileName: att.fileName,
+                fileSize: att.fileSize,
+                mimeType: att.mimeType,
+                url: att.url,
+                publicId: att.publicId || null,
+              })),
+            }
+          : undefined,
       },
       include: {
         sender: { select: { id: true, name: true, role: true } },
@@ -86,7 +106,14 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json(message, { status: 201 });
+    await prisma.conversation.update({
+      where: { id: conversationId },
+      data: { updatedAt: new Date() },
+    });
+
+    await pusher.trigger(`private-conversation-${conversationId}`, "new-message", message);
+
+    return NextResponse.json({ success: true, message }, { status: 201 });
   } catch (err) {
     console.error("Send message error:", err);
     return NextResponse.json(

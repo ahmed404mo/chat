@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { pusher } from "@/lib/pusher-server";
 import { getUserFromToken } from "@/lib/auth";
 
 export async function POST(req: Request) {
@@ -144,6 +145,12 @@ export async function POST(req: Request) {
         data: { usedCount: { increment: 1 } },
       }),
     ]);
+
+    await pusher.trigger(`private-conversation-${invite.conversationId}`, "member-added", {
+      conversationId: invite.conversationId,
+      addedUserIds: [user.id],
+      addedUsers: [{ id: user.id, name: user.name, role: user.role }],
+    });
 
     return NextResponse.json(
       {
