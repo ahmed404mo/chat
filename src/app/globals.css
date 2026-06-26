@@ -6,6 +6,8 @@
   --animate-fade-in-up: fade-in-up 0.35s ease-out;
   --animate-slide-in-right: slide-in-right 0.3s ease-out;
   --animate-slide-in-left: slide-in-left 0.3s ease-out;
+  --animate-slide-up: slide-up 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+  --animate-scale-in: scale-in 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @keyframes fade-in-up {
@@ -19,6 +21,14 @@
 @keyframes slide-in-left {
   from { opacity: 0; transform: translateX(-20px); }
   to { opacity: 1; transform: translateX(-20px); }
+}
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 * { box-sizing: border-box; }
@@ -79,4 +89,23 @@ html:not(.dark) ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
 @keyframes sky-moon-glow {
   0%, 100% { box-shadow: 0 0 8px #a78bfa, 0 0 16px #7c3aed; }
   50% { box-shadow: 0 0 14px #a78bfa, 0 0 24px #7c3aed; }
+}
+
+/* Chat highlight animation */
+.highlight-flash {
+  animation: highlight-flash 1.5s ease-out;
+}
+@keyframes highlight-flash {
+  0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.5); }
+  50% { box-shadow: 0 0 20px 4px rgba(59, 130, 246, 0.3); }
+  100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+}
+
+/* Custom context menu backdrop */
+.context-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(2px);
 }

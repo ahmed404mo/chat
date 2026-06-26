@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { SocketProvider, useChat } from "@/context/SocketContext";
+import { motion, AnimatePresence } from "framer-motion";
 import ChatSidebar from "@/components/ChatSidebar";
 import ChatWindow from "@/components/ChatWindow";
 import BottomTabBar from "@/components/BottomTabBar";
@@ -13,6 +14,10 @@ function ChatPageInner() {
   const { activeConversation, setActiveConversation } = useChat(); 
   const router = useRouter();
   const synced = useRef(false);
+  const [isRtl, setIsRtl] = useState(false);
+  useEffect(() => {
+    setIsRtl(document.documentElement.dir === "rtl");
+  }, []);
 
   // Read URL ?active= param on mount and set active conversation
   useEffect(() => {
@@ -71,19 +76,41 @@ function ChatPageInner() {
 
       <div className="w-full max-w-[1600px] h-[100dvh] sm:h-[calc(100vh-2rem)] lg:h-[calc(100vh-4rem)] theme-dark:bg-white/5 bg-white/70 backdrop-blur-2xl sm:border theme-dark:border-white/10 border-gray-200 sm:rounded-[2.5rem] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] flex flex-col overflow-hidden z-10 relative">
         <div className="flex-1 flex overflow-hidden min-h-0">
-          <aside
-            className={`w-full sm:w-[380px] md:w-[420px] flex-shrink-0 sm:border-l theme-dark:border-white/10 border-gray-200 theme-dark:bg-black/20 bg-white/50 flex flex-col relative transition-all duration-300 overflow-hidden
-              ${activeConversation ? "hidden sm:flex" : "flex"} 
-            `}
-          >
+          {/* Mobile view: animated switch */}
+          <div className="flex sm:hidden w-full relative overflow-hidden">
+            <AnimatePresence mode="wait">
+              {!activeConversation ? (
+                <motion.div
+                  key="sidebar"
+                  initial={{ opacity: 0, x: isRtl ? 30 : -30 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: isRtl ? 30 : -30 }}
+                  transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                  className="w-full shrink-0"
+                >
+                  <ChatSidebar />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="chat"
+                  initial={{ opacity: 0, x: isRtl ? -40 : 40 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: isRtl ? -40 : 40 }}
+                  transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                  className="w-full shrink-0"
+                >
+                  <ChatWindow />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Desktop view: side by side */}
+          <aside className="hidden sm:flex sm:w-[380px] md:w-[420px] flex-shrink-0 ltr:sm:border-l rtl:sm:border-r theme-dark:border-white/10 border-gray-200 theme-dark:bg-black/20 bg-white/50 flex-col overflow-hidden">
             <ChatSidebar />
           </aside>
 
-          <main
-            className={`flex-1 flex flex-col bg-transparent relative transition-all duration-300 overflow-hidden
-              ${activeConversation ? "flex" : "hidden sm:flex"}
-            `}
-          >
+          <main className="hidden sm:flex flex-1 flex-col bg-transparent overflow-hidden">
             <ChatWindow />
           </main>
         </div>

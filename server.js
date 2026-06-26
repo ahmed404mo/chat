@@ -164,11 +164,14 @@ app.prepare().then(() => {
           return ack?.({ error: "Not a participant" });
         }
 
+        const repliedToId = data.repliedToId || null;
         const message = await prisma.message.create({
           data: {
             content: content?.trim() || "",
             senderId: socket.userId,
             conversationId,
+            repliedToId,
+            status: "DELIVERED",
             attachments: attachments?.length
               ? {
                   create: attachments.map((att) => ({
@@ -183,6 +186,9 @@ app.prepare().then(() => {
           },
           include: {
             sender: { select: { id: true, name: true, role: true } },
+            repliedTo: {
+              include: { sender: { select: { id: true, name: true, role: true } } },
+            },
             attachments: true,
             reactions: { include: { user: { select: { id: true, name: true, role: true } } } },
             readBy: { include: { user: { select: { id: true, name: true, role: true } } } },
@@ -202,9 +208,10 @@ app.prepare().then(() => {
       }
     });
 
-    socket.on("typing", ({ conversationId }) => {
+    socket.on("typing", ({ conversationId, name }) => {
       socket.to(conversationId).emit("user-typing", {
         userId: socket.userId,
+        name: name || socket.userName,
         conversationId,
       });
     });
@@ -279,6 +286,71 @@ app.prepare().then(() => {
         });
       } catch (err) {
         console.error("mark-read error:", err);
+      }
+    });
+
+    socket.on("edit-message", async ({ messageId, content, conversationId }, ack) => {
+      try {
+        if (!messageId || !content?.trim()) return ack?.({ error: "Invalid data" });
+        const message = await prisma.message.findFirst({
+          where: { id: messageId, senderId: socket.userId },
+        });
+        if (!message) return ack?.({ error: "Not found or not yours" });
+        const updated = await prisma.message.update({
+          where: { id: messageId },
+          data: { content: content.trim(), isEdited: true },
+          include: {
+            sender: { select: { id: true, name: true, role: true } },
+            attachments: true,
+            reactions: { include: { user: { select: { id: true, name: true, role: true } } } },
+            readBy: { include: { user: { select: { id: true, name: true, role: true } } } },
+          },
+        });
+        io.to(conversationId).emit("message-edited", updated);
+        ack?.({ success: true });
+      } catch (err) {
+        console.error("edit-message error:", err);
+        ack?.({ error: "Failed to edit message" });
+      }
+    });
+
+    socket.on("delete-message", async ({ messageId, conversationId, forEveryone }, ack) => {
+      try {
+        const message = await prisma.message.findFirst({
+          where: { id: messageId },
+        });
+        if (!message) return ack?.({ error: "Not found" });
+        if (message.senderId !== socket.userId) return ack?.({ error: "Not your message" });
+        if (forEveryone) {
+          await prisma.message.delete({ where: { id: messageId } });
+          io.to(conversationId).emit("message-deleted", { messageId, conversationId });
+        } else {
+          const placeholder = await prisma.message.update({
+            where: { id: messageId },
+            data: { content: "🗑️ This message was deleted", attachments: { set: [] } },
+          });
+          io.to(conversationId).emit("message-edited", placeholder);
+        }
+        ack?.({ success: true });
+      } catch (err) {
+        console.error("delete-message error:", err);
+        ack?.({ error: "Failed to delete message" });
+      }
+    });
+
+    socket.on("pin-message", async ({ messageId, conversationId }, ack) => {
+      try {
+        const message = await prisma.message.findUnique({ where: { id: messageId } });
+        if (!message) return ack?.({ error: "Not found" });
+        const updated = await prisma.message.update({
+          where: { id: messageId },
+          data: { pinned: !message.pinned },
+        });
+        io.to(conversationId).emit("message-pinned", { messageId, conversationId, pinned: updated.pinned });
+        ack?.({ success: true, pinned: updated.pinned });
+      } catch (err) {
+        console.error("pin-message error:", err);
+        ack?.({ error: "Failed to pin message" });
       }
     });
 

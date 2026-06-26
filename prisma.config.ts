@@ -1,11 +1,14 @@
 import dotenv from "dotenv";
 import path from "path";
 
-// تحميل متغيرات البيئة من ملف .env.local
-dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
+// تحميل متغيرات البيئة من ملف .env
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
 export default {
   schema: "./schema.prisma",
+  migrations: {
+    seed: "tsx seed.ts",
+  },
   datasource: {
     // استخدام الرابط المباشر كحل احتياطي في حال لم يتم قراءة الملف
     url:

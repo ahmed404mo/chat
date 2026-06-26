@@ -106,6 +106,7 @@ model ConversationParticipant {
 model Message {
   id             String           @id @default(cuid())
   content        String
+  status         String           @default("SENT") // SENT, DELIVERED, READ
   senderId       String
   sender         User             @relation(fields: [senderId], references: [id])
   conversationId String
@@ -113,7 +114,12 @@ model Message {
   attachments    Attachment[]
   readAt         DateTime?
   readBy         MessageRead[]
+  repliedToId    String?
+  repliedTo      Message?         @relation("MessageReplies", fields: [repliedToId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  replies        Message[]        @relation("MessageReplies")
   reactions      MessageReaction[]
+  pinned         Boolean          @default(false)
+  isEdited       Boolean          @default(false)
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 }

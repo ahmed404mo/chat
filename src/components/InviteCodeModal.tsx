@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useChat } from "@/context/SocketContext";
 
 interface InviteCodeModalProps {
@@ -27,8 +28,6 @@ export default function InviteCodeModal({ open, onClose, conversationId }: Invit
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); return () => setMounted(false); }, []);
 
-  if (!open || !mounted) return null;
-
   const handleGenerate = async () => {
     setLoading(true);
     setError("");
@@ -53,8 +52,25 @@ export default function InviteCodeModal({ open, onClose, conversationId }: Invit
   };
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" tabIndex={-1} style={{ background: "rgba(0,0,0,0.6)" }}>
-      <div className="w-full max-w-md theme-dark:bg-white/5 bg-white/90 backdrop-blur-2xl border theme-dark:border-white/10 border-gray-200 rounded-[1.5rem] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] animate-fade-in-up">
+    <AnimatePresence>
+      {open && mounted && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-0 sm:px-4"
+          tabIndex={-1}
+          style={{ background: "rgba(0,0,0,0.6)" }}
+          onClick={onClose}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 60, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 60, scale: 0.95 }}
+            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md theme-dark:bg-white/5 bg-white/90 backdrop-blur-2xl border theme-dark:border-white/10 border-gray-200 rounded-t-[1.5rem] sm:rounded-[1.5rem] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b theme-dark:border-white/10 border-gray-200">
           <div className="font-semibold theme-dark:text-white text-gray-900">Generate Invitation Code</div>
           <button
@@ -163,8 +179,10 @@ export default function InviteCodeModal({ open, onClose, conversationId }: Invit
             {invite ? "Done" : "Cancel"}
           </button>
         </div>
-      </div>
-    </div>,
+      </motion.div>
+    </motion.div>
+      )}
+    </AnimatePresence>,
     document.body
   );
 }

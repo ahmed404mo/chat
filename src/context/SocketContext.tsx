@@ -22,14 +22,14 @@ interface Attachment {
   createdAt: string;
 }
 
-interface Reaction {
+export interface Reaction {
   id: string;
   emoji: string;
   userId: string;
   user: { id: string; name: string; role: string };
 }
 
-interface Message {
+export interface Message {
   id: string;
   content: string;
   senderId: string;
@@ -40,6 +40,10 @@ interface Message {
   readBy: { userId: string; user: { id: string; name: string; role: string }; readAt: string }[];
   createdAt: string;
   updatedAt: string;
+  status?: string;
+  isEdited?: boolean;
+  pinned?: boolean;
+  repliedTo?: (Message & { sender: { id: string; name: string; role: string } }) | null;
 }
 
 interface Participant {
@@ -86,7 +90,7 @@ interface SocketContextType {
   typingUsers: Record<string, { userId: string; name: string }[]>;
   activeConversation: string | null;
   setActiveConversation: (id: string | null) => void;
-  sendMessage: (conversationId: string, content: string) => void;
+  sendMessage: (conversationId: string, content: string, repliedToId?: string, files?: any[], repliedToMessage?: Message | null) => void;
   emitTyping: (conversationId: string) => void;
   emitStopTyping: (conversationId: string) => void;
   loadMoreMessages: (conversationId: string) => void;
@@ -106,6 +110,8 @@ interface SocketContextType {
   addReaction: (messageId: string, emoji: string, conversationId: string) => void;
   removeReaction: (messageId: string, conversationId: string) => void;
   markAsRead: (conversationId: string) => void;
+  editMessage: (messageId: string, content: string, conversationId: string) => void;
+  deleteMessage: (messageId: string, conversationId: string, forEveryone: boolean) => void;
 }
 
 const SocketContext = createContext<SocketContextType | null>(null);
@@ -415,6 +421,30 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       });
     };
 
+    const handleMessageEdited = (message: Message) => {
+      setMessages((prev) => {
+        const msgs = prev[message.conversationId];
+        if (!msgs) return prev;
+        return {
+          ...prev,
+          [message.conversationId]: msgs.map((m) =>
+            m.id === message.id ? { ...m, ...message } : m
+          ),
+        };
+      });
+    };
+
+    const handleMessageDeleted = ({ messageId, conversationId }: { messageId: string; conversationId: string }) => {
+      setMessages((prev) => {
+        const msgs = prev[conversationId];
+        if (!msgs) return prev;
+        return {
+          ...prev,
+          [conversationId]: msgs.filter((m) => m.id !== messageId),
+        };
+      });
+    };
+
     socket.on("new-message", handleNewMessage);
     socket.on("user-typing", handleUserTyping);
     socket.on("user-stop-typing", handleUserStopTyping);
@@ -424,6 +454,9 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     socket.on("conversation-updated", handleConversationUpdated);
     socket.on("message-reaction-added", handleReactionAdded);
     socket.on("message-reaction-removed", handleReactionRemoved);
+
+    socket.on("message-edited", handleMessageEdited);
+    socket.on("message-deleted", handleMessageDeleted);
     socket.on("messages-read", handleMessagesRead);
 
     return () => {
@@ -437,11 +470,13 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       socket.off("conversation-updated", handleConversationUpdated);
       socket.off("message-reaction-added", handleReactionAdded);
       socket.off("message-reaction-removed", handleReactionRemoved);
+      socket.off("message-edited", handleMessageEdited);
+      socket.off("message-deleted", handleMessageDeleted);
       socket.off("messages-read", handleMessagesRead);
     };
   }, [fetchConversations, fetchMessages]);
 
-  const sendMessage = useCallback((conversationId: string, content: string) => {
+  const sendMessage = useCallback((conversationId: string, content: string, repliedToId?: string, files?: any[], repliedToMessage?: Message | null) => {
     const socket = getSocket();
     if (!socket) return;
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -452,9 +487,10 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       senderId: userRef.current?.id || "",
       sender: { id: userRef.current?.id || "", name: userRef.current?.name || "", role },
       conversationId,
-      attachments: [],
+      attachments: files ? files.map((a: any) => ({ ...a, id: "", createdAt: new Date().toISOString() })) : [],
       reactions: [],
       readBy: [],
+      repliedTo: repliedToMessage || undefined,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -462,7 +498,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       ...prev,
       [conversationId]: [...(prev[conversationId] || []), optimistic],
     }));
-    socket.emit("send-message", { conversationId, content });
+    socket.emit("send-message", { conversationId, content, repliedToId, attachments: files });
     setUnreadCounts((prev) => ({ ...prev, [conversationId]: 0 }));
   }, []);
 
@@ -665,6 +701,49 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     socket.emit("remove-reaction", { messageId, conversationId });
   }, []);
 
+  const editMessage = useCallback((messageId: string, content: string, conversationId: string) => {
+    const socket = getSocket();
+    if (!socket) return;
+    setMessages((prev) => {
+      const msgs = prev[conversationId];
+      if (!msgs) return prev;
+      return {
+        ...prev,
+        [conversationId]: msgs.map((m) =>
+          m.id === messageId ? { ...m, content, isEdited: true } : m
+        ),
+      };
+    });
+    socket.emit("edit-message", { messageId, content, conversationId });
+  }, []);
+
+  const deleteMessage = useCallback((messageId: string, conversationId: string, forEveryone: boolean) => {
+    const socket = getSocket();
+    if (!socket) return;
+    if (!forEveryone) {
+      setMessages((prev) => {
+        const msgs = prev[conversationId];
+        if (!msgs) return prev;
+        return {
+          ...prev,
+          [conversationId]: msgs.map((m) =>
+            m.id === messageId ? { ...m, content: "🗑️ This message was deleted", attachments: [] } : m
+          ),
+        };
+      });
+    } else {
+      setMessages((prev) => {
+        const msgs = prev[conversationId];
+        if (!msgs) return prev;
+        return {
+          ...prev,
+          [conversationId]: msgs.filter((m) => m.id !== messageId),
+        };
+      });
+    }
+    socket.emit("delete-message", { messageId, conversationId, forEveryone });
+  }, []);
+
   const markAsRead = useCallback((conversationId: string) => {
     const socket = getSocket();
     if (!socket) return;
@@ -714,6 +793,8 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         renameConversation,
         addReaction,
         removeReaction,
+        editMessage,
+        deleteMessage,
         markAsRead,
       }}
     >
