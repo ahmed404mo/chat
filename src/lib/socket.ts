@@ -13,7 +13,26 @@ export function getPusherClient(): Pusher | null {
   return pusherClient;
 }
 
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
 export function connectSocket(token: string, onAuthError?: () => void): Pusher {
+  if (isTokenExpired(token)) {
+    onAuthError?.();
+    if (pusherClient) {
+      pusherClient.disconnect();
+      pusherClient = null;
+      subscribedChannels.clear();
+    }
+    return null as any;
+  }
+
   if (pusherClient) {
     pusherClient.disconnect();
     subscribedChannels.clear();
@@ -27,13 +46,6 @@ export function connectSocket(token: string, onAuthError?: () => void): Pusher {
         authorization: `Bearer ${token}`,
       },
     },
-  });
-
-  pusherClient.connection.bind("error", (err: any) => {
-    console.error("Pusher connection error:", err);
-    if (err?.error?.type === "AuthError") {
-      onAuthError?.();
-    }
   });
 
   return pusherClient;

@@ -8,7 +8,6 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { initPusher, disconnectPusher } from "@/lib/pusher-client";
 import { connectSocket, disconnectSocket } from "@/lib/socket";
 
 interface User {
@@ -37,7 +36,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleAuthError = useCallback(() => {
     disconnectSocket();
-    disconnectPusher();
     setToken(null);
     setUser(null);
     localStorage.removeItem("token");
@@ -51,7 +49,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setToken(storedToken);
       setUser(JSON.parse(storedUser));
       connectSocket(storedToken, handleAuthError);
-      initPusher(storedToken);
     }
     setLoading(false);
   }, [handleAuthError]);
@@ -70,7 +67,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
     connectSocket(data.token, handleAuthError);
-    initPusher(data.token);
   }, [handleAuthError]);
 
   const register = useCallback(
@@ -88,7 +84,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       connectSocket(data.token, handleAuthError);
-      initPusher(data.token);
     },
     [handleAuthError]
   );
