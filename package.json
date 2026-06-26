@@ -7,12 +7,23 @@
     "build": "npx prisma generate && next build",
     "postinstall": "npx prisma generate",
     "start": "node server.js",
-    "lint": "eslint"
+    "lint": "eslint",
+    "cap:init": "npx cap init",
+    "cap:sync": "npx cap sync",
+    "cap:open:android": "npx cap open android",
+    "cap:build:android": "npx cap build android",
+    "mobile:build": "npm run build && npx cap sync",
+    "mobile:dev": "npx cap run android"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "bcryptjs": "^3.0.3",

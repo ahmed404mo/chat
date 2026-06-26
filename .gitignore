@@ -48,3 +48,10 @@ next-env.d.ts
 # Prisma / Databases (If using SQLite locally)
 *.db
 *.db-journal
+
+# Android build outputs (NOT the android/ platform directory - that IS tracked for CI)
+*.apk
+*.aab
+*.jks
+*.keystore
+
