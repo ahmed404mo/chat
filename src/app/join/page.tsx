@@ -180,9 +180,9 @@ function JoinContent() {
             <button
               className="w-full py-2.5 font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl hover:from-blue-500 hover:to-purple-500 transition-all shadow-[0_0_20px_rgba(99,102,241,0.3)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
               onClick={handleJoin}
-              disabled={status === "joining" || !code.trim()}
+              disabled={!code.trim()}
             >
-              {status === "joining" ? "Joining..." : "Join Chat"}
+              Join Chat
             </button>
           </>
         ) : status === "success" ? (
