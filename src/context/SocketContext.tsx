@@ -324,6 +324,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       });
 
       channel.bind("user-typing", ({ userId, name, conversationId }: { userId: string; name: string; conversationId: string }) => {
+        if (userId === userRef.current?.id) return;
         setTypingUsers((prev) => {
           const existing = prev[conversationId] || [];
           if (existing.find((u) => u.userId === userId)) return prev;
@@ -338,6 +339,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       });
 
       channel.bind("user-stop-typing", ({ userId, conversationId }: { userId: string; conversationId: string }) => {
+        if (userId === userRef.current?.id) return;
         setTypingUsers((prev) => ({
           ...prev,
           [conversationId]: (prev[conversationId] || []).filter((u) => u.userId !== userId),
@@ -493,7 +495,14 @@ export function SocketProvider({ children }: { children: ReactNode }) {
       method: "POST",
       headers: authJson(token),
       body: JSON.stringify({ conversationId, content, repliedToId, attachments: files }),
-    }).catch((err) => console.error("send-message error:", err));
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: "Unknown" }));
+          console.error("send-message API error:", res.status, err);
+        }
+      })
+      .catch((err) => console.error("send-message fetch error:", err));
     setUnreadCounts((prev) => ({ ...prev, [conversationId]: 0 }));
   }, [token]);
 
@@ -521,7 +530,14 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         method: "POST",
         headers: authJson(token),
         body: JSON.stringify({ conversationId, content, attachments }),
-      }).catch((err) => console.error("send-file-message error:", err));
+      })
+        .then(async (res) => {
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({ error: "Unknown" }));
+            console.error("send-file-message API error:", res.status, err);
+          }
+        })
+        .catch((err) => console.error("send-file-message fetch error:", err));
       setUnreadCounts((prev) => ({ ...prev, [conversationId]: 0 }));
     },
     [token]
