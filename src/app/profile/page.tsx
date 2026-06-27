@@ -2,7 +2,14 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { LogOut, User, Mail, Shield, ChevronRight } from "lucide-react";
+import {
+  LogOut,
+  User,
+  Mail,
+  Shield,
+  ChevronRight,
+  MessageSquare,
+} from "lucide-react";
 import { motion } from "framer-motion";
 
 // A simple, reusable list item component for the profile page
@@ -119,6 +126,15 @@ export default function ProfilePage() {
           transition={{ duration: 0.5, delay: 0.2 }}
           className="mt-6 space-y-2 bg-[var(--color-surface)] p-2 rounded-2xl border border-[var(--color-border)]"
         >
+          <ProfileListItem
+            icon={<MessageSquare size={20} />}
+            label="Back to Chat"
+            isButton
+            onClick={() => router.push("/chat")}
+          />
+          <div className="px-4">
+            <div className="h-px bg-[var(--color-border)]" />
+          </div>
           <ProfileListItem
             icon={<LogOut size={20} />}
             label="Logout"
