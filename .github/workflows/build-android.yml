@@ -38,7 +38,8 @@ jobs:
         run: |
           mkdir -p resources
           cp public/icon.png resources/icon.png
-          npx @capacitor/assets generate --android --iconBackgroundColor '#111827' --splashBackgroundColor '#111827'
+          npx @capacitor/assets generate --android --iconBackgroundColor '#111827' --splashBackgroundColor '#111827' || true
+          rm -f android/app/src/main/res/drawable/splash.png
 
       - name: Sync Capacitor
         run: npx cap sync
