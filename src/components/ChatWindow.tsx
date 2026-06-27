@@ -113,11 +113,16 @@ export default function ChatWindow({ onToggleSidebar }: ChatWindowProps) {
   const isGroup = conversation?.isGroup || false;
 
   const scrollToBottom = useCallback((smooth = true) => {
-    requestAnimationFrame(() => {
-      messagesEndRef.current?.scrollIntoView({
-        behavior: smooth ? "smooth" : "auto",
+    if (smooth) {
+      requestAnimationFrame(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       });
-    });
+    } else {
+      const container = messagesContainerRef.current;
+      if (container) {
+        container.scrollTop = container.scrollHeight;
+      }
+    }
   }, []);
 
   const handleScroll = useCallback(() => {
