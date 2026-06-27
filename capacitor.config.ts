@@ -6,8 +6,8 @@ const config: CapacitorConfig = {
   webDir: 'out',
 
   server: {
-    url: 'http://10.0.2.2:3000',
-    cleartext: true,
+    url: 'https://chat-five-rho-38.vercel.app',
+    cleartext: false,
   },
 
   android: {
