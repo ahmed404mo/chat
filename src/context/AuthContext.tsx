@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { connectSocket, disconnectSocket, isTokenExpired } from "@/lib/socket";
+import { registerPushNotifications } from "@/lib/register-push";
 
 interface User {
   id: string;
@@ -53,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setToken(storedToken);
         setUser(JSON.parse(storedUser));
         connectSocket(storedToken, handleAuthError);
+        registerPushNotifications(storedToken);
       }
     }
     setLoading(false);
@@ -72,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("token", data.token);
     localStorage.setItem("user", JSON.stringify(data.user));
     connectSocket(data.token, handleAuthError);
+    registerPushNotifications(data.token);
   }, [handleAuthError]);
 
   const register = useCallback(
@@ -89,6 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       connectSocket(data.token, handleAuthError);
+      registerPushNotifications(data.token);
     },
     [handleAuthError]
   );

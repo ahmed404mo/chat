@@ -55,3 +55,7 @@ next-env.d.ts
 *.jks
 *.keystore
 
+# Firebase admin keys (DO NOT COMMIT - use GitHub secrets)
+firebase-adminsdk-*.json
+*-firebase-adminsdk-*.json
+

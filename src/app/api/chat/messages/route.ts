@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { pusher } from "@/lib/pusher-server";
 import { getUserFromToken } from "@/lib/auth";
+import { sendPushNotification } from "@/lib/firebase-admin";
 
 export async function GET(req: Request) {
   const user = getUserFromToken(req);
@@ -72,6 +73,37 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Not a participant" }, { status: 403 });
     }
 
+    const mentionPattern = /@(\w[\w\s]*\w|\w+)/g;
+    const mentions: string[] = [];
+    let match;
+    while ((match = mentionPattern.exec(content)) !== null) {
+      mentions.push(match[1].trim());
+    }
+
+    let mentionedUserIds: string[] = [];
+    if (mentions.length > 0) {
+      const participants = await prisma.conversationParticipant.findMany({
+        where: { conversationId },
+        include: { user: { select: { id: true, name: true } } },
+      });
+
+      const hasAll = mentions.some((m) => m === "all" || m === "everyone" || m === "الكل");
+      if (hasAll) {
+        mentionedUserIds = participants
+          .filter((p) => p.userId !== user.id)
+          .map((p) => p.userId);
+      } else {
+        const mentionedNames = mentions.map((m) => m.toLowerCase());
+        mentionedUserIds = participants
+          .filter((p) => {
+            if (p.userId === user.id) return false;
+            const name = p.user.name?.toLowerCase() || "";
+            return mentionedNames.some((mn) => name.includes(mn) || mn.includes(name));
+          })
+          .map((p) => p.userId);
+      }
+    }
+
     const message = await prisma.message.create({
       data: {
         content: content?.trim() || "",
@@ -79,6 +111,7 @@ export async function POST(req: Request) {
         senderId: user.id,
         repliedToId: repliedToId || null,
         status: "DELIVERED",
+        mentionedUserIds: mentionedUserIds.length > 0 ? mentionedUserIds : undefined,
         attachments: files?.length
           ? {
               create: files.map((att: any) => ({
@@ -112,6 +145,32 @@ export async function POST(req: Request) {
     });
 
     try { await pusher.trigger(`private-conversation-${conversationId}`, "new-message", message); } catch (e) { console.error("pusher trigger error:", e); }
+
+    try {
+      const participants = await prisma.conversationParticipant.findMany({
+        where: { conversationId, userId: { not: user.id } },
+        select: { userId: true },
+      });
+      const participantIds = participants.map((p) => p.userId);
+      const participantTokens = await prisma.deviceToken.findMany({
+        where: { userId: { in: participantIds } },
+      });
+      if (participantTokens.length > 0) {
+        const tokenList = participantTokens.map((t) => t.token);
+        const senderName = message.sender?.name || "Someone";
+        const isMention = mentionedUserIds.length > 0;
+        const title = isMention
+          ? `${senderName} mentioned you`
+          : `New message from ${senderName}`;
+        sendPushNotification(tokenList, title, message.content || "Sent a file", {
+          conversationId,
+          messageId: message.id,
+          senderId: user.id,
+        });
+      }
+    } catch (e) {
+      console.error("push notification error:", e);
+    }
 
     return NextResponse.json({ success: true, message }, { status: 201 });
   } catch (err) {

@@ -598,6 +598,8 @@ export default function ChatWindow() {
             onCancelReply={() => setReplyingTo(null)}
             editingMessage={editingMessage}
             onCancelEdit={() => setEditingMessage(null)}
+            participants={conversation?.participants}
+            currentUserId={user?.id}
           />
         </div>
       </div>

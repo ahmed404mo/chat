@@ -43,6 +43,7 @@ export interface Message {
   status?: string;
   isEdited?: boolean;
   pinned?: boolean;
+  mentionedUserIds?: string[];
   repliedTo?: (Message & { sender: { id: string; name: string; role: string } }) | null;
 }
 
@@ -157,14 +158,17 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const showBrowserNotification = useCallback(
-    (senderName: string, messageContent: string, conversationId: string) => {
+    (senderName: string, messageContent: string, conversationId: string, isMention?: boolean) => {
       if (!("Notification" in window) || Notification.permission !== "granted") return;
       try {
-        const n = new Notification("New message from " + senderName, {
+        const title = isMention
+          ? `${senderName} mentioned you`
+          : "New message from " + senderName;
+        const n = new Notification(title, {
           body: messageContent,
           icon: "/favicon.ico",
           tag: conversationId,
-          requireInteraction: false,
+          requireInteraction: isMention ?? false,
         });
         n.onclick = () => {
           window.focus();
@@ -300,19 +304,22 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         const currentUser = userRef.current;
         const currentActive = activeConversationRef.current;
         if (currentUser && message.senderId !== currentUser.id) {
+          const isMention = message.mentionedUserIds?.includes(currentUser.id);
           if (currentActive !== message.conversationId) {
             setUnreadCounts((prev) => ({
               ...prev,
-              [message.conversationId]: (prev[message.conversationId] || 0) + 1,
+              [message.conversationId]: (prev[message.conversationId] || 0) + (isMention ? 2 : 1),
             }));
           }
-          if (document.hidden) {
+          if (document.hidden || isMention) {
             showBrowserNotification(
               message.sender?.name || "Someone",
               message.content || "Sent a file",
-              message.conversationId
+              message.conversationId,
+              isMention
             );
-          } else {
+          }
+          if (!document.hidden && !isMention) {
             if (notificationAudio.current) {
               const audio = notificationAudio.current;
               audio.currentTime = 0;

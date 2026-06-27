@@ -5,6 +5,7 @@ import {
   useRef,
   useCallback,
   useEffect,
+  useMemo,
   type KeyboardEvent,
 } from "react";
 import { VoiceInput } from "./ui/voice-input";
@@ -24,6 +25,11 @@ interface Message {
   repliedTo?: Message | null;
 }
 
+interface Participant {
+  userId: string;
+  user: { id: string; name: string; role: string };
+}
+
 interface ChatInputProps {
   conversationId: string;
   onSend: (content: string, files?: UploadedFile[]) => void;
@@ -36,6 +42,8 @@ interface ChatInputProps {
   onCancelReply: () => void;
   editingMessage?: Message | null;
   onCancelEdit?: () => void;
+  participants?: Participant[];
+  currentUserId?: string;
 }
 
 const ALLOWED_TYPES = [
@@ -99,6 +107,8 @@ export default function ChatInput({
   onCancelReply,
   editingMessage,
   onCancelEdit,
+  participants = [],
+  currentUserId,
 }: ChatInputProps) {
   const { token } = useAuth();
   const [text, setText] = useState("");
@@ -112,12 +122,15 @@ export default function ChatInput({
     duration: number;
     mimeType: string;
   } | null>(null);
+  const [mentionSearch, setMentionSearch] = useState<string | null>(null);
+  const [mentionIndex, setMentionIndex] = useState(0);
   const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const recordingTimeRef = useRef(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (editingMessage) {
@@ -133,6 +146,18 @@ export default function ChatInput({
     }
   };
 
+  const mentionableUsers = useMemo(() => {
+    const allItem = { id: "all", name: "all" };
+    const users = participants
+      .filter((p) => p.userId !== currentUserId)
+      .map((p) => ({ id: p.userId, name: p.user.name }))
+      .filter((u) => !mentionSearch || u.name.toLowerCase().includes(mentionSearch.toLowerCase()));
+    const showAll = !mentionSearch || "all".startsWith(mentionSearch.toLowerCase());
+    return showAll ? [allItem, ...users] : users;
+  }, [participants, currentUserId, mentionSearch]);
+
+  const showMentionPopup = mentionSearch !== null && mentionableUsers.length > 0;
+
   const handleChange = useCallback(
     (value: string) => {
       setText(value);
@@ -141,6 +166,20 @@ export default function ChatInput({
       typingTimeout.current = setTimeout(() => {
         onStopTyping();
       }, 1500);
+
+      const cursorPos = textareaRef.current?.selectionStart ?? value.length;
+      const beforeCursor = value.slice(0, cursorPos);
+      const atIndex = beforeCursor.lastIndexOf("@");
+      if (atIndex !== -1 && (atIndex === 0 || beforeCursor[atIndex - 1] === " ")) {
+        const afterAt = beforeCursor.slice(atIndex + 1);
+        const hasSpace = /\s/.test(afterAt);
+        if (!hasSpace) {
+          setMentionSearch(afterAt);
+          setMentionIndex(0);
+          return;
+        }
+      }
+      setMentionSearch(null);
     },
     [onTyping, onStopTyping],
   );
@@ -348,7 +387,42 @@ export default function ChatInput({
     onCancelEdit?.();
   }, [text, uploadedFiles, onSend, onSendFile, onStopTyping, onCancelEdit]);
 
+  const insertMention = useCallback((name: string) => {
+    const cursorPos = textareaRef.current?.selectionStart ?? text.length;
+    const before = text.slice(0, cursorPos);
+    const after = text.slice(cursorPos);
+    const atIndex = before.lastIndexOf("@");
+    const newText = before.slice(0, atIndex) + `@${name} ` + after;
+    setText(newText);
+    setMentionSearch(null);
+    requestAnimationFrame(() => {
+      const newPos = atIndex + name.length + 2;
+      textareaRef.current?.setSelectionRange(newPos, newPos);
+    });
+  }, [text]);
+
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (showMentionPopup) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setMentionIndex((prev) => (prev + 1) % mentionableUsers.length);
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setMentionIndex((prev) => (prev - 1 + mentionableUsers.length) % mentionableUsers.length);
+        return;
+      }
+      if (e.key === "Enter" || e.key === "Tab") {
+        e.preventDefault();
+        insertMention(mentionableUsers[mentionIndex].name);
+        return;
+      }
+      if (e.key === "Escape") {
+        setMentionSearch(null);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -571,7 +645,34 @@ export default function ChatInput({
           </div>
         ) : (
           <div className="flex items-center gap-1.5 theme-dark:bg-[#233138] bg-white border theme-dark:border-white/[0.06] border-gray-100 rounded-xl px-3 py-1.5 transition-all duration-200 flex-1">
+            <div className="flex-1 relative">
+            {showMentionPopup && (
+              <div className="absolute bottom-full left-0 right-0 mb-1 z-50">
+                <div className="theme-dark:bg-[#1f2c33] bg-white border theme-dark:border-white/[0.08] border-gray-200 rounded-xl shadow-xl overflow-hidden max-h-40 overflow-y-auto">
+                  {mentionableUsers.map((u, i) => (
+                    <button
+                      key={u.id}
+                      className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 transition-colors ${
+                        i === mentionIndex
+                          ? "theme-dark:bg-white/[0.1] bg-gray-100"
+                          : "theme-dark:hover:bg-white/[0.05] hover:bg-gray-50"
+                      } theme-dark:text-gray-200 text-gray-700`}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        insertMention(u.name);
+                      }}
+                    >
+                      <span className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                        {u.name[0].toUpperCase()}
+                      </span>
+                      <span className="truncate">{u.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <textarea
+              ref={textareaRef}
               value={text}
               onChange={(e) => handleChange(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -586,6 +687,7 @@ export default function ChatInput({
               className="flex-1 w-full resize-none bg-transparent border-none outline-none text-sm theme-dark:text-white text-gray-900 placeholder-gray-500 leading-relaxed py-1.5 max-h-[120px] font-inherit"
               aria-label="Message input"
             />
+          </div>
             <button
               className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 active:scale-90 ${
                 canSend && !uploading
