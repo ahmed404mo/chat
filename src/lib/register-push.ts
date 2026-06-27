@@ -1,5 +1,9 @@
+function isCapacitor(): boolean {
+  return typeof window !== "undefined" && !!(window as any).Capacitor?.isNativePlatform?.();
+}
+
 export async function registerPushNotifications(token: string | null) {
-  if (typeof window === "undefined") return;
+  if (!isCapacitor()) return;
   if (!token) return;
 
   try {
@@ -20,7 +24,20 @@ export async function registerPushNotifications(token: string | null) {
       }).catch(() => {});
     });
 
-    PushNotifications.addListener("pushNotificationReceived", () => {});
+    try {
+      await PushNotifications.createChannel({
+        id: "mentora-messages",
+        name: "Messages",
+        description: "New message notifications",
+        importance: 4,
+        visibility: 1,
+        sound: "default",
+        vibration: true,
+        lights: true,
+      });
+    } catch {}
+
+    await PushNotifications.register();
 
     PushNotifications.addListener("pushNotificationActionPerformed", (action) => {
       const data = action.notification.data;
@@ -31,19 +48,6 @@ export async function registerPushNotifications(token: string | null) {
         window.dispatchEvent(event);
       }
     });
-
-    await PushNotifications.register();
-  } catch {
-    // Not running in Capacitor (browser)
-  }
-}
-
-export async function unregisterPushNotifications() {
-  if (typeof window === "undefined") return;
-
-  try {
-    const { PushNotifications } = await import("@capacitor/push-notifications");
-    await PushNotifications.unregister();
   } catch {
     // Not running in Capacitor
   }

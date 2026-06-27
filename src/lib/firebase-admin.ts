@@ -39,9 +39,10 @@ export async function sendPushNotification(
     android: {
       priority: "high" as const,
       notification: {
-        channelId: "default",
+        channelId: "mentora-messages",
         priority: "high" as const,
         visibility: "public" as const,
+        sound: "default",
       },
     },
     data: data || {},

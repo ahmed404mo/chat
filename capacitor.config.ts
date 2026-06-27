@@ -30,6 +30,9 @@ const config: CapacitorConfig = {
       splashFullScreen: true,
       splashImmersive: true,
     },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert', 'banner', 'list'],
+    },
     StatusBar: {
       style: 'DARK',
       backgroundColor: '#111827',
