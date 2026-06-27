@@ -72,7 +72,7 @@ const getSupportedMimeType = () => {
 // 3. Sub-Components
 // ==========================================
 
-const ReplyOrEditPreview = ({ replyingTo, editingMessage, onCancel }: { replyingTo: Message | null; editingMessage: Message | null; onCancel: () => void }) => {
+const ReplyOrEditPreview = ({ replyingTo, editingMessage, onCancel }: { replyingTo: Message | null; editingMessage: Message | null | undefined; onCancel: () => void }) => {
   if (!replyingTo && !editingMessage) return null;
   const isReply = !!replyingTo;
   const targetMessage = replyingTo || editingMessage;
