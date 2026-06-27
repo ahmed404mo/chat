@@ -6,25 +6,55 @@ import { Reply } from "lucide-react";
 import EmojiPicker from "./EmojiPicker";
 import ReactionViewer from "./ReactionViewer";
 
-interface User { id: string; name: string | null; role?: string; }
-interface Reaction { id: string; emoji: string; userId: string; user: { id: string; name: string; role: string }; createdAt?: string; }
-interface Attachment { id: string; fileName: string; fileSize: number; mimeType: string; url: string; publicId: string | null; }
+interface User {
+  id: string;
+  name: string | null;
+  role?: string;
+}
+interface Reaction {
+  id: string;
+  emoji: string;
+  userId: string;
+  user: { id: string; name: string; role: string };
+  createdAt?: string;
+}
+interface Attachment {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  url: string;
+  publicId: string | null;
+}
 interface Message {
-  id: string; content: string; sender: User; senderId: string;
-  conversationId?: string; createdAt: string; status?: string;
+  id: string;
+  content: string;
+  sender: User;
+  senderId: string;
+  conversationId?: string;
+  createdAt: string;
+  status?: string;
   readBy: { userId: string; user: User; readAt: string }[];
   repliedTo?: (Message & { sender: User }) | null;
-  reactions?: Reaction[]; attachments?: Attachment[]; isEdited?: boolean;
+  reactions?: Reaction[];
+  attachments?: Attachment[];
+  isEdited?: boolean;
 }
 
 interface MessageBubbleProps {
-  message: Message; isSent: boolean; showSender: boolean; isGroup: boolean;
-  isGroupStart?: boolean; isGroupEnd?: boolean; hasNextFromSameSender?: boolean;
+  message: Message;
+  isSent: boolean;
+  showSender: boolean;
+  isGroup: boolean;
+  isGroupStart?: boolean;
+  isGroupEnd?: boolean;
+  hasNextFromSameSender?: boolean;
   onReply: (message: Message) => void;
   onContextMenu: (e: React.MouseEvent, message: Message) => void;
   onReact: (messageId: string, emoji: string) => void;
   onRemoveReaction: (messageId: string) => void;
-  currentUserId: string; highlight?: boolean;
+  currentUserId: string;
+  highlight?: boolean;
   onScrollToMessage?: (messageId: string) => void;
   onImageClick?: (url: string) => void;
   onlineUsers?: Set<string>;
@@ -35,7 +65,11 @@ const SWIPE_MAX = 80;
 
 const formatTime = (dateString: string) => {
   const date = new Date(dateString);
-  return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 };
 
 const formatFileSize = (bytes: number) => {
@@ -44,7 +78,13 @@ const formatFileSize = (bytes: number) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-function AudioPlayer({ attachment, isSent }: { attachment: Attachment; isSent: boolean }) {
+function AudioPlayer({
+  attachment,
+  isSent,
+}: {
+  attachment: Attachment;
+  isSent: boolean;
+}) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const waveformRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -63,7 +103,9 @@ function AudioPlayer({ attachment, isSent }: { attachment: Attachment; isSent: b
 
     const generateWaveform = async () => {
       try {
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const ctx = new (
+          window.AudioContext || (window as any).webkitAudioContext
+        )();
         const response = await fetch(attachment.url);
         const arrayBuffer = await response.arrayBuffer();
         const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
@@ -82,7 +124,9 @@ function AudioPlayer({ attachment, isSent }: { attachment: Attachment; isSent: b
         setWaveform(data.map((v) => v / max));
         ctx.close();
       } catch {
-        setWaveform(Array.from({ length: 40 }, () => Math.random() * 0.6 + 0.2));
+        setWaveform(
+          Array.from({ length: 40 }, () => Math.random() * 0.6 + 0.2),
+        );
       }
     };
     generateWaveform();
@@ -94,20 +138,34 @@ function AudioPlayer({ attachment, isSent }: { attachment: Attachment; isSent: b
         setCurrentTime(audio.currentTime);
       }
     };
-    const onEnded = () => { setIsPlaying(false); audio.currentTime = 0; };
+    const onEnded = () => {
+      setIsPlaying(false);
+      audio.currentTime = 0;
+    };
     audio.addEventListener("loadeddata", onLoadedData);
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("ended", onEnded);
-    return () => { audio.removeEventListener("loadeddata", onLoadedData); audio.removeEventListener("timeupdate", onTimeUpdate); audio.removeEventListener("ended", onEnded); };
+    return () => {
+      audio.removeEventListener("loadeddata", onLoadedData);
+      audio.removeEventListener("timeupdate", onTimeUpdate);
+      audio.removeEventListener("ended", onEnded);
+    };
   }, [attachment.url]);
 
   useEffect(() => {
-    if (progress > 80 && !isListened) { setIsListened(true); }
+    if (progress > 80 && !isListened) {
+      setIsListened(true);
+    }
   }, [progress, isListened]);
 
   const togglePlay = () => {
     if (audioRef.current) {
-      if (isPlaying) { audioRef.current.pause(); } else { audioRef.current.play(); playedOnce.current = true; }
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+        playedOnce.current = true;
+      }
       setIsPlaying(!isPlaying);
     }
   };
@@ -136,13 +194,24 @@ function AudioPlayer({ attachment, isSent }: { attachment: Attachment; isSent: b
   const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
 
   return (
-    <div className={`relative flex items-center gap-1.5 w-full min-w-0 rounded-xl ${!isListened && !isSent && !playedOnce.current ? "bg-[var(--color-primary)]/5" : ""}`}>
+    <div
+      className={`relative flex items-center gap-1.5 w-full min-w-0 rounded-xl ${!isListened && !isSent && !playedOnce.current ? "bg-[var(--color-primary)]/5" : ""}`}
+    >
       <audio ref={audioRef} src={attachment.url} preload="metadata" />
       {/* Play/Pause */}
-      <button onClick={togglePlay}
+      <button
+        onClick={togglePlay}
         className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center transition-all active:scale-90"
-        style={{ background: isPlaying ? "var(--color-primary)" : "var(--color-hover)" }}>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill={isPlaying ? "white" : "var(--color-text)"}>
+        style={{
+          background: isPlaying ? "var(--color-primary)" : "var(--color-hover)",
+        }}
+      >
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill={isPlaying ? "white" : "var(--color-text)"}
+        >
           {isPlaying ? (
             <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z" />
           ) : (
@@ -151,18 +220,28 @@ function AudioPlayer({ attachment, isSent }: { attachment: Attachment; isSent: b
         </svg>
       </button>
       {/* Waveform */}
-      <div ref={waveformRef} onClick={handleWaveformClick}
-        className="flex-1 flex items-center gap-[2px] h-10 cursor-pointer py-1">
-        {waveform.length > 0 ? waveform.map((amp, i) => {
-          const played = (i / waveform.length) * 100 <= progress;
-          return (
-            <div key={i} className="flex-1 rounded-full transition-colors duration-100"
-              style={{
-                height: `${Math.max(amp * 32, 3)}px`,
-                background: played ? "var(--color-primary)" : "var(--color-border)",
-              }} />
-          );
-        }) : (
+      <div
+        ref={waveformRef}
+        onClick={handleWaveformClick}
+        className="flex-1 flex items-center gap-[2px] h-10 cursor-pointer py-1"
+      >
+        {waveform.length > 0 ? (
+          waveform.map((amp, i) => {
+            const played = (i / waveform.length) * 100 <= progress;
+            return (
+              <div
+                key={i}
+                className="flex-1 rounded-full transition-colors duration-100"
+                style={{
+                  height: `${Math.max(amp * 32, 3)}px`,
+                  background: played
+                    ? "var(--color-primary)"
+                    : "var(--color-border)",
+                }}
+              />
+            );
+          })
+        ) : (
           <div className="flex-1 flex items-center gap-1">
             <div className="w-1 h-3 rounded-full bg-[var(--color-border)] animate-pulse" />
             <div className="w-1 h-5 rounded-full bg-[var(--color-border)] animate-pulse" />
@@ -172,25 +251,39 @@ function AudioPlayer({ attachment, isSent }: { attachment: Attachment; isSent: b
       </div>
       {/* Time */}
       <div className="text-[11px] text-[var(--color-muted)] tabular-nums w-10 text-center shrink-0 leading-none">
-        {isPlaying || progress > 0 ? formatTime(currentTime) : formatTime(duration)}
+        {isPlaying || progress > 0
+          ? formatTime(currentTime)
+          : formatTime(duration)}
       </div>
       {/* Speed */}
       <div className="relative shrink-0">
-        <button onClick={() => setShowSpeedMenu((p) => !p)}
-          className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-all">
+        <button
+          onClick={() => setShowSpeedMenu((p) => !p)}
+          className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-hover)] transition-all"
+        >
           {playbackRate}x
         </button>
         {showSpeedMenu && (
           <>
-            <div className="fixed inset-0 z-40" onClick={() => setShowSpeedMenu(false)} />
+            <div
+              className="fixed inset-0 z-40"
+              onClick={() => setShowSpeedMenu(false)}
+            />
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 4 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               className="absolute bottom-full mb-1 start-1/2 -translate-x-1/2 z-50 rounded-xl border shadow-xl overflow-hidden"
-              style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}>
+              style={{
+                background: "var(--color-surface)",
+                borderColor: "var(--color-border)",
+              }}
+            >
               {speeds.map((speed) => (
-                <button key={speed} onClick={() => changeSpeed(speed)}
-                  className={`block w-full text-start px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${playbackRate === speed ? "text-[var(--color-primary)] bg-[var(--color-active)]" : "text-[var(--color-text)] hover:bg-[var(--color-hover)]"}`}>
+                <button
+                  key={speed}
+                  onClick={() => changeSpeed(speed)}
+                  className={`block w-full text-start px-3 py-1.5 text-xs font-medium transition-colors whitespace-nowrap ${playbackRate === speed ? "text-[var(--color-primary)] bg-[var(--color-active)]" : "text-[var(--color-text)] hover:bg-[var(--color-hover)]"}`}
+                >
                   {speed}x
                 </button>
               ))}
@@ -210,62 +303,119 @@ function getFileIcon(mimeType: string) {
   if (mimeType.startsWith("image/")) return "🖼️";
   if (mimeType.includes("pdf")) return "📄";
   if (mimeType.includes("word") || mimeType.includes("document")) return "📝";
-  if (mimeType.includes("spreadsheet") || mimeType.includes("excel") || mimeType.includes("csv")) return "📊";
-  if (mimeType.includes("presentation") || mimeType.includes("powerpoint")) return "📽️";
+  if (
+    mimeType.includes("spreadsheet") ||
+    mimeType.includes("excel") ||
+    mimeType.includes("csv")
+  )
+    return "📊";
+  if (mimeType.includes("presentation") || mimeType.includes("powerpoint"))
+    return "📽️";
   if (mimeType.includes("zip") || mimeType.includes("rar")) return "📦";
   if (mimeType.startsWith("audio/")) return "🎵";
   if (mimeType.startsWith("video/")) return "🎬";
   return "📎";
 }
 
-function MessageStatus({ message, isSent }: { message: Message; isSent: boolean }) {
+function MessageStatus({
+  message,
+  isSent,
+}: {
+  message: Message;
+  isSent: boolean;
+}) {
   if (!isSent) return null;
   if (message.status === "sending") {
     return (
       <span className="flex items-center gap-0.5">
-        <svg className="animate-spin" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--color-muted)" strokeWidth="2.5">
-          <circle cx="12" cy="12" r="10" strokeDasharray="31.4 31.4" strokeLinecap="round" />
+        <svg
+          className="animate-spin"
+          width="10"
+          height="10"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--color-muted)"
+          strokeWidth="2.5"
+        >
+          <circle
+            cx="12"
+            cy="12"
+            r="10"
+            strokeDasharray="31.4 31.4"
+            strokeLinecap="round"
+          />
         </svg>
       </span>
     );
   }
   const isRead = message.readBy && message.readBy.length > 0;
   return (
-    <span className={`text-[10px] leading-none ${isRead ? "text-[var(--color-accent)]" : "text-[var(--color-muted)]"}`}>
+    <span
+      className={`text-[10px] leading-none ${isRead ? "text-[var(--color-accent)]" : "text-[var(--color-muted)]"}`}
+    >
       {isRead ? "✓✓" : "✓"}
     </span>
   );
 }
 
-function ReplyPreview({ repliedTo, onScrollToMessage }: { repliedTo: Message & { sender: User }; onScrollToMessage?: (id: string) => void }) {
+function ReplyPreview({
+  repliedTo,
+  onScrollToMessage,
+}: {
+  repliedTo: Message & { sender: User };
+  onScrollToMessage?: (id: string) => void;
+}) {
   return (
-    <button onClick={() => onScrollToMessage?.(repliedTo.id)}
-      className="flex items-start gap-2 px-2 py-1.5 mb-1.5 rounded-lg bg-black/[0.12] hover:bg-black/[0.18] transition-colors text-start w-full border-l-[3px] border-[var(--color-primary)]">
+    <button
+      onClick={() => onScrollToMessage?.(repliedTo.id)}
+      className="flex items-start gap-2 px-2 py-1.5 mb-1.5 rounded-lg bg-black/[0.12] hover:bg-black/[0.18] transition-colors text-start w-full border-l-[3px] border-[var(--color-primary)]"
+    >
       <div className="min-w-0 flex-1">
-        <div className="text-xs font-semibold text-[var(--color-primary)] truncate">{repliedTo.sender.name}</div>
-        <div className="text-xs text-[var(--color-muted)] truncate">{repliedTo.content || (repliedTo.attachments?.length ? "📎 File" : "")}</div>
+        <div className="text-xs font-semibold text-[var(--color-primary)] truncate">
+          {repliedTo.sender.name}
+        </div>
+        <div className="text-xs text-[var(--color-muted)] truncate">
+          {repliedTo.content ||
+            (repliedTo.attachments?.length ? "📎 File" : "")}
+        </div>
       </div>
     </button>
   );
 }
 
-function ReactionBadge({ reactions, messageId, currentUserId, onReact, onRemoveReaction, isSent, onViewReactions }: {
-  reactions: Reaction[]; messageId: string; currentUserId: string;
+function ReactionBadge({
+  reactions,
+  messageId,
+  currentUserId,
+  onReact,
+  onRemoveReaction,
+  isSent,
+  onViewReactions,
+}: {
+  reactions: Reaction[];
+  messageId: string;
+  currentUserId: string;
   onReact: (messageId: string, emoji: string) => void;
-  onRemoveReaction: (messageId: string) => void; isSent: boolean;
+  onRemoveReaction: (messageId: string) => void;
+  isSent: boolean;
   onViewReactions: (messageId: string) => void;
 }) {
   if (!reactions || reactions.length === 0) return null;
   const grouped = reactions.reduce<Record<string, Reaction[]>>((acc, r) => {
     if (!acc[r.emoji]) acc[r.emoji] = [];
-    acc[r.emoji].push(r); return acc;
+    acc[r.emoji].push(r);
+    return acc;
   }, {});
   const entries = Object.entries(grouped);
   const totalCount = reactions.length;
   const MAX_VISIBLE = 5;
   const sorted = entries.sort((a, b) => {
-    const aLast = Math.max(...a[1].map((r) => new Date(r.createdAt || 0).getTime()));
-    const bLast = Math.max(...b[1].map((r) => new Date(r.createdAt || 0).getTime()));
+    const aLast = Math.max(
+      ...a[1].map((r) => new Date(r.createdAt || 0).getTime()),
+    );
+    const bLast = Math.max(
+      ...b[1].map((r) => new Date(r.createdAt || 0).getTime()),
+    );
     return bLast - aLast;
   });
 
@@ -275,27 +425,49 @@ function ReactionBadge({ reactions, messageId, currentUserId, onReact, onRemoveR
       animate={{ scale: 1 }}
       onClick={() => onViewReactions(messageId)}
       className="flex items-center h-5 px-1.5 rounded-full shadow-sm border hover:ring-2 hover:ring-[var(--color-primary)]/30 transition-all cursor-pointer"
-      style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}
+      style={{
+        background: "var(--color-surface)",
+        borderColor: "var(--color-border)",
+      }}
     >
       <div className="flex items-center -space-x-0.5">
         {sorted.slice(0, MAX_VISIBLE).map(([emoji]) => (
-          <span key={emoji} className="text-[11px] leading-none">{emoji}</span>
+          <span key={emoji} className="text-[11px] leading-none">
+            {emoji}
+          </span>
         ))}
         {sorted.length > MAX_VISIBLE && (
-          <span className="text-[10px] text-[var(--color-muted)] leading-none ms-0.5">+{sorted.length - MAX_VISIBLE}</span>
+          <span className="text-[10px] text-[var(--color-muted)] leading-none ms-0.5">
+            +{sorted.length - MAX_VISIBLE}
+          </span>
         )}
       </div>
       {totalCount > 1 && (
-        <span className="text-[10px] font-medium text-[var(--color-muted)] ms-1 leading-none tabular-nums">{totalCount}</span>
+        <span className="text-[10px] font-medium text-[var(--color-muted)] ms-1 leading-none tabular-nums">
+          {totalCount}
+        </span>
       )}
     </motion.button>
   );
 }
 
 const MessageBubble = memo(function MessageBubble({
-  message, isSent, showSender, isGroup, isGroupStart, isGroupEnd, hasNextFromSameSender,
-  onReply, onContextMenu, onReact, onRemoveReaction, currentUserId, highlight,
-  onScrollToMessage, onImageClick, onlineUsers,
+  message,
+  isSent,
+  showSender,
+  isGroup,
+  isGroupStart,
+  isGroupEnd,
+  hasNextFromSameSender,
+  onReply,
+  onContextMenu,
+  onReact,
+  onRemoveReaction,
+  currentUserId,
+  highlight,
+  onScrollToMessage,
+  onImageClick,
+  onlineUsers,
 }: MessageBubbleProps) {
   const [showQuickReactions, setShowQuickReactions] = useState(false);
   const [showReplyButton, setShowReplyButton] = useState(false);
@@ -306,7 +478,6 @@ const MessageBubble = memo(function MessageBubble({
   const bubbleRef = useRef<HTMLDivElement>(null);
   const addButtonRef = useRef<HTMLButtonElement>(null);
   const badgeRef = useRef<HTMLButtonElement>(null);
-  const textSelectionActive = useRef(false);
   const [isRtl, setIsRtl] = useState(false);
 
   useEffect(() => {
@@ -317,16 +488,22 @@ const MessageBubble = memo(function MessageBubble({
     try {
       const recent = JSON.parse(localStorage.getItem("recentEmojis") || "[]");
       return recent.length > 0 ? recent[0] : null;
-    } catch { return null; }
+    } catch {
+      return null;
+    }
   });
 
   const updateLastUsedEmoji = useCallback((emoji: string) => {
-    setLastUsedEmoji((prev) => emoji !== prev ? emoji : prev);
+    setLastUsedEmoji((prev) => (emoji !== prev ? emoji : prev));
   }, []);
 
   const handleBubbleClick = () => {
-    const isTouchDevice = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-    if (isTouchDevice) { setShowQuickReactions((prev) => !prev); setShowReplyButton((prev) => !prev); }
+    const isTouchDevice =
+      "ontouchstart" in window || navigator.maxTouchPoints > 0;
+    if (isTouchDevice) {
+      setShowQuickReactions((prev) => !prev);
+      setShowReplyButton((prev) => !prev);
+    }
   };
 
   useEffect(() => {
@@ -334,7 +511,10 @@ const MessageBubble = memo(function MessageBubble({
       bubbleRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
       const el = bubbleRef.current;
       el.classList.add("highlight-flash");
-      const timer = setTimeout(() => el.classList.remove("highlight-flash"), 1500);
+      const timer = setTimeout(
+        () => el.classList.remove("highlight-flash"),
+        1500,
+      );
       return () => clearTimeout(timer);
     }
   }, [highlight]);
@@ -343,11 +523,18 @@ const MessageBubble = memo(function MessageBubble({
 
   const bubbleStyle = isSent
     ? {
-        background: message.status === "sending"
-          ? "linear-gradient(135deg, rgba(124, 92, 255, 0.12), rgba(139, 92, 246, 0.08))"
-          : "linear-gradient(135deg, rgba(124, 92, 255, 0.2), rgba(139, 92, 246, 0.15))",
-        borderColor: message.status === "sending" ? "rgba(124, 92, 255, 0.06)" : "rgba(124, 92, 255, 0.12)",
-        boxShadow: message.status === "sending" ? "0 2px 8px rgba(124, 92, 255, 0.03)" : "0 2px 8px rgba(124, 92, 255, 0.06)",
+        background:
+          message.status === "sending"
+            ? "linear-gradient(135deg, rgba(124, 92, 255, 0.12), rgba(139, 92, 246, 0.08))"
+            : "linear-gradient(135deg, rgba(124, 92, 255, 0.2), rgba(139, 92, 246, 0.15))",
+        borderColor:
+          message.status === "sending"
+            ? "rgba(124, 92, 255, 0.06)"
+            : "rgba(124, 92, 255, 0.12)",
+        boxShadow:
+          message.status === "sending"
+            ? "0 2px 8px rgba(124, 92, 255, 0.03)"
+            : "0 2px 8px rgba(124, 92, 255, 0.06)",
       }
     : {
         background: "var(--color-received)",
@@ -357,13 +544,16 @@ const MessageBubble = memo(function MessageBubble({
 
   const showTail = isSent || showSender;
 
-  const handleEmojiSelect = useCallback((emoji: string) => {
-    onReact(message.id, emoji);
-    updateLastUsedEmoji(emoji);
-    setShowEmojiPicker(false);
-    setShowAddedReaction(true);
-    setTimeout(() => setShowAddedReaction(false), 1500);
-  }, [message.id, onReact, updateLastUsedEmoji]);
+  const handleEmojiSelect = useCallback(
+    (emoji: string) => {
+      onReact(message.id, emoji);
+      updateLastUsedEmoji(emoji);
+      setShowEmojiPicker(false);
+      setShowAddedReaction(true);
+      setTimeout(() => setShowAddedReaction(false), 1500);
+    },
+    [message.id, onReact, updateLastUsedEmoji],
+  );
 
   const handleViewReactions = useCallback(() => {
     setShowReactionViewer(true);
@@ -371,31 +561,32 @@ const MessageBubble = memo(function MessageBubble({
 
   const hasReactions = message.reactions && message.reactions.length > 0;
 
-  const handleDragStart = useCallback(() => {
-    const selection = window.getSelection();
-    textSelectionActive.current = !!(selection && selection.toString().length > 0);
-  }, []);
+  const handleDrag = useCallback(
+    (_: any, info: { offset: { x: number } }) => {
+      if (isDeleted) return;
+      const absX = Math.abs(info.offset.x);
+      const progress = Math.min(absX / SWIPE_THRESHOLD, 1);
+      setSwipeProgress(progress);
+    },
+    [isDeleted],
+  );
 
-  const handleDrag = useCallback((_: any, info: { offset: { x: number } }) => {
-    if (isDeleted || textSelectionActive.current) return;
-    const absX = Math.abs(info.offset.x);
-    const progress = Math.min(absX / SWIPE_THRESHOLD, 1);
-    setSwipeProgress(progress);
-  }, [isDeleted]);
-
-  const handleDragEnd = useCallback((_: any, info: { offset: { x: number } }) => {
-    if (isDeleted || textSelectionActive.current) {
+  const handleDragEnd = useCallback(
+    (_: any, info: { offset: { x: number } }) => {
+      if (isDeleted) {
+        setSwipeProgress(0);
+        return;
+      }
+      const absX = Math.abs(info.offset.x);
+      if (absX >= SWIPE_THRESHOLD) {
+        if (typeof navigator !== "undefined" && navigator.vibrate)
+          navigator.vibrate(10);
+        onReply(message);
+      }
       setSwipeProgress(0);
-      textSelectionActive.current = false;
-      return;
-    }
-    const absX = Math.abs(info.offset.x);
-    if (absX >= SWIPE_THRESHOLD) {
-      if (typeof navigator !== "undefined" && navigator.vibrate) navigator.vibrate(10);
-      onReply(message);
-    }
-    setSwipeProgress(0);
-  }, [isDeleted, message, onReply]);
+    },
+    [isDeleted, message, onReply],
+  );
 
   return (
     <motion.div
@@ -418,30 +609,42 @@ const MessageBubble = memo(function MessageBubble({
                 border: "1px solid rgba(124, 92, 255, 0.2)",
               }}
             >
-              <Reply size={16} className={`text-[var(--color-primary)] ${isRtl ? "scale-x-[-1]" : ""}`} />
+              <Reply
+                size={16}
+                className={`text-[var(--color-primary)] ${isRtl ? "scale-x-[-1]" : ""}`}
+              />
             </motion.div>
           </div>
         )}
 
         <motion.div
           drag="x"
-          dragConstraints={isRtl ? { left: -SWIPE_MAX, right: 0 } : { left: 0, right: SWIPE_MAX }}
+          dragConstraints={
+            isRtl
+              ? { left: -SWIPE_MAX, right: 0 }
+              : { left: 0, right: SWIPE_MAX }
+          }
           dragElastic={0.15}
           dragSnapToOrigin
-          onDragStart={handleDragStart}
           onDrag={handleDrag}
           onDragEnd={handleDragEnd}
           className="relative z-20"
           style={{ touchAction: "pan-y" }}
         >
-            <div
-              ref={bubbleRef}
-              className={`relative group`}
-              onContextMenu={(e) => onContextMenu(e, message)}
-              onMouseEnter={() => { setShowQuickReactions(true); setShowReplyButton(true); }}
-              onMouseLeave={() => { setShowQuickReactions(false); setShowReplyButton(false); }}
-              onClick={handleBubbleClick}
-            >
+          <div
+            ref={bubbleRef}
+            className={`relative group`}
+            onContextMenu={(e) => onContextMenu(e, message)}
+            onMouseEnter={() => {
+              setShowQuickReactions(true);
+              setShowReplyButton(true);
+            }}
+            onMouseLeave={() => {
+              setShowQuickReactions(false);
+              setShowReplyButton(false);
+            }}
+            onClick={handleBubbleClick}
+          >
             {/* Sender name for group chats */}
             {!isSent && showSender && (
               <div className="flex items-center gap-2 mb-1 px-1">
@@ -451,7 +654,9 @@ const MessageBubble = memo(function MessageBubble({
                 <span className="text-xs font-semibold text-[var(--color-primary)] truncate">
                   {message.sender.name}
                   {message.sender.role && message.sender.role !== "client" && (
-                    <span className="text-[10px] text-[var(--color-muted)] font-normal ms-1">({message.sender.role})</span>
+                    <span className="text-[10px] text-[var(--color-muted)] font-normal ms-1">
+                      ({message.sender.role})
+                    </span>
                   )}
                 </span>
               </div>
@@ -461,42 +666,64 @@ const MessageBubble = memo(function MessageBubble({
             <div
               className={`relative px-3 py-2 shadow-sm border rounded-2xl ${
                 isSent
-                  ? isGroupStart ? "rounded-tr-sm" : "rounded-tr-[18px]"
-                  : isGroupStart ? "rounded-tl-sm" : "rounded-tl-[18px]"
+                  ? isGroupStart
+                    ? "rounded-tr-sm"
+                    : "rounded-tr-[18px]"
+                  : isGroupStart
+                    ? "rounded-tl-sm"
+                    : "rounded-tl-[18px]"
               } ${isDeleted ? "opacity-60 italic" : ""} ${message.status === "sending" ? "opacity-70" : ""}`}
               style={bubbleStyle}
             >
               {/* Reply preview */}
               {message.repliedTo && (
-                <ReplyPreview repliedTo={message.repliedTo} onScrollToMessage={onScrollToMessage} />
+                <ReplyPreview
+                  repliedTo={message.repliedTo}
+                  onScrollToMessage={onScrollToMessage}
+                />
               )}
 
               {/* Attachments */}
               {message.attachments && message.attachments.length > 0 && (
                 <div className="space-y-1">
                   {message.attachments.map((att, index) => (
-                    <AttachmentPreview key={att.id || `${att.publicId}-${index}`} att={att} onImageClick={onImageClick} isSent={isSent} />
+                    <AttachmentPreview
+                      key={att.id || `${att.publicId}-${index}`}
+                      att={att}
+                      onImageClick={onImageClick}
+                      isSent={isSent}
+                    />
                   ))}
                 </div>
               )}
 
               {/* Content */}
-              {message.content && message.content !== "🗑️ This message was deleted" && (
-                <div className="flex items-end gap-2 max-w-full min-w-0">
-                  <p className="text-sm text-[var(--color-text)] whitespace-pre-wrap break-words leading-relaxed overflow-hidden [overflow-wrap:anywhere]">
-                    {message.content.split(/(@\w+)/g).map((part, i) =>
-                      part.startsWith("@")
-                        ? <span key={i} className="font-semibold text-[var(--color-primary)]">{part}</span>
-                        : part
-                    )}
-                  </p>
-                </div>
-              )}
+              {message.content &&
+                message.content !== "🗑️ This message was deleted" && (
+                  <div className="flex items-end gap-2 max-w-full min-w-0">
+                    <p className="text-sm text-[var(--color-text)] whitespace-pre-wrap break-words leading-relaxed overflow-hidden [overflow-wrap:anywhere] select-none">
+                      {message.content.split(/(@\w+)/g).map((part, i) =>
+                        part.startsWith("@") ? (
+                          <span
+                            key={i}
+                            className="font-semibold text-[var(--color-primary)]"
+                          >
+                            {part}
+                          </span>
+                        ) : (
+                          part
+                        ),
+                      )}
+                    </p>
+                  </div>
+                )}
 
               {/* Edited + timestamp + status */}
               <div className="flex items-center gap-1.5 mt-1">
                 {message.isEdited && (
-                  <span className="text-[10px] text-[var(--color-muted)] italic opacity-70">edited</span>
+                  <span className="text-[10px] text-[var(--color-muted)] italic opacity-70">
+                    edited
+                  </span>
                 )}
                 <div className="flex items-center gap-1 ms-auto">
                   <span className="text-[10px] text-[var(--color-muted)] tabular-nums leading-none">
@@ -508,7 +735,9 @@ const MessageBubble = memo(function MessageBubble({
 
               {/* Reactions badge - inline, attached to bubble */}
               {hasReactions && (
-                <div className={`flex mt-1.5 -mb-1 ${isSent ? "justify-end" : "justify-start"}`}>
+                <div
+                  className={`flex mt-1.5 -mb-1 ${isSent ? "justify-end" : "justify-start"}`}
+                >
                   <ReactionBadge
                     reactions={message.reactions!}
                     messageId={message.id}
@@ -531,10 +760,19 @@ const MessageBubble = memo(function MessageBubble({
                     transition={{ duration: 0.15 }}
                     onClick={() => onReply(message)}
                     className="absolute -top-2.5 inset-inline-end-[-8px] w-7 h-7 rounded-full flex items-center justify-center shadow-lg border z-10 hover:scale-110 active:scale-95 cursor-pointer"
-                    style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}
+                    style={{
+                      background: "var(--color-surface)",
+                      borderColor: "var(--color-border)",
+                    }}
                     title="Reply"
                   >
-                    <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor" className="text-[var(--color-muted)]">
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 16 16"
+                      fill="currentColor"
+                      className="text-[var(--color-muted)]"
+                    >
                       <path d="M5.92,4.42A.5.5,0,0,0,5,5.13V6.5A5.5,5.5,0,0,0,10.5,12H12a.5.5,0,0,0,0-1H10.5A4.5,4.5,0,0,1,6,6.5V7.88a.5.5,0,0,0,.92.35l2.5-3a.5.5,0,0,0,0-.71l-2.5-3A.5.5,0,0,0,5.92,4.42Z" />
                     </svg>
                   </motion.button>
@@ -550,41 +788,74 @@ const MessageBubble = memo(function MessageBubble({
                     exit={{ opacity: 0, y: 8, scale: 0.9 }}
                     transition={{ duration: 0.15 }}
                     className={`absolute -top-10 ${isSent ? "inset-inline-end-0" : "inset-inline-start-0"} flex items-center gap-0.5 rounded-xl border shadow-xl px-1.5 py-1 z-20`}
-                    style={{ background: "var(--color-surface)", borderColor: "var(--color-border)" }}
-                    onMouseEnter={() => { setShowQuickReactions(true); setShowReplyButton(true); }}
-                    onMouseLeave={() => { setShowQuickReactions(false); setShowReplyButton(false); }}
+                    style={{
+                      background: "var(--color-surface)",
+                      borderColor: "var(--color-border)",
+                    }}
+                    onMouseEnter={() => {
+                      setShowQuickReactions(true);
+                      setShowReplyButton(true);
+                    }}
+                    onMouseLeave={() => {
+                      setShowQuickReactions(false);
+                      setShowReplyButton(false);
+                    }}
                   >
                     {["👍", "❤️", "😂", "😮"].map((emoji) => {
-                      const hasMine = message.reactions?.some((r) => r.userId === currentUserId && r.emoji === emoji);
+                      const hasMine = message.reactions?.some(
+                        (r) => r.userId === currentUserId && r.emoji === emoji,
+                      );
                       return (
-                        <button key={emoji}
+                        <button
+                          key={emoji}
                           onClick={() => {
                             if (hasMine) onRemoveReaction(message.id);
-                            else { onReact(message.id, emoji); updateLastUsedEmoji(emoji); }
+                            else {
+                              onReact(message.id, emoji);
+                              updateLastUsedEmoji(emoji);
+                            }
                           }}
-                          className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--color-hover)] transition-all text-lg hover:scale-125 active:scale-95">
+                          className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--color-hover)] transition-all text-lg hover:scale-125 active:scale-95"
+                        >
                           {emoji}
                         </button>
                       );
                     })}
-                    {lastUsedEmoji && !["👍", "❤️", "😂", "😮"].includes(lastUsedEmoji) && (() => {
-                      const hasMine = message.reactions?.some((r) => r.userId === currentUserId && r.emoji === lastUsedEmoji);
-                      return (
-                        <button key={lastUsedEmoji}
-                          onClick={() => {
-                            if (hasMine) onRemoveReaction(message.id);
-                            else { onReact(message.id, lastUsedEmoji!); updateLastUsedEmoji(lastUsedEmoji!); }
-                          }}
-                          className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--color-hover)] transition-all text-lg hover:scale-125 active:scale-95">
-                          {lastUsedEmoji}
-                        </button>
-                      );
-                    })()}
+                    {lastUsedEmoji &&
+                      !["👍", "❤️", "😂", "😮"].includes(lastUsedEmoji) &&
+                      (() => {
+                        const hasMine = message.reactions?.some(
+                          (r) =>
+                            r.userId === currentUserId &&
+                            r.emoji === lastUsedEmoji,
+                        );
+                        return (
+                          <button
+                            key={lastUsedEmoji}
+                            onClick={() => {
+                              if (hasMine) onRemoveReaction(message.id);
+                              else {
+                                onReact(message.id, lastUsedEmoji!);
+                                updateLastUsedEmoji(lastUsedEmoji!);
+                              }
+                            }}
+                            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--color-hover)] transition-all text-lg hover:scale-125 active:scale-95"
+                          >
+                            {lastUsedEmoji}
+                          </button>
+                        );
+                      })()}
                     {/* "+" button to open full emoji picker */}
-                    <div className="w-px h-5 mx-0.5" style={{ background: "var(--color-border)" }} />
+                    <div
+                      className="w-px h-5 mx-0.5"
+                      style={{ background: "var(--color-border)" }}
+                    />
                     <button
                       ref={addButtonRef}
-                      onClick={(e) => { e.stopPropagation(); setShowEmojiPicker(!showEmojiPicker); }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowEmojiPicker(!showEmojiPicker);
+                      }}
                       className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[var(--color-hover)] transition-all text-base hover:scale-125 active:scale-90 text-[var(--color-muted)]"
                       title="More emojis"
                     >
@@ -626,38 +897,80 @@ const MessageBubble = memo(function MessageBubble({
 
       {/* Reaction Viewer */}
       <AnimatePresence>
-        {showReactionViewer && message.reactions && message.reactions.length > 0 && (
-          <ReactionViewer
-            reactions={message.reactions}
-            onClose={() => setShowReactionViewer(false)}
-            onlineUsers={onlineUsers}
-            anchorRect={badgeRef.current?.getBoundingClientRect() || bubbleRef.current?.getBoundingClientRect()}
-          />
-        )}
+        {showReactionViewer &&
+          message.reactions &&
+          message.reactions.length > 0 && (
+            <ReactionViewer
+              reactions={message.reactions}
+              onClose={() => setShowReactionViewer(false)}
+              onlineUsers={onlineUsers}
+              anchorRect={
+                badgeRef.current?.getBoundingClientRect() ||
+                bubbleRef.current?.getBoundingClientRect()
+              }
+            />
+          )}
       </AnimatePresence>
     </motion.div>
   );
 });
 
-function AttachmentPreview({ att, onImageClick, isSent }: { att: Attachment; onImageClick?: (url: string) => void; isSent: boolean }) {
+function AttachmentPreview({
+  att,
+  onImageClick,
+  isSent,
+}: {
+  att: Attachment;
+  onImageClick?: (url: string) => void;
+  isSent: boolean;
+}) {
   if (att.mimeType.startsWith("image/")) {
     return (
-      <button onClick={() => onImageClick?.(att.url)} className="block rounded-xl overflow-hidden mb-1.5 group w-full">
-        <img src={att.url} alt={att.fileName} className="max-w-full w-full max-h-64 object-cover rounded-xl transition-transform duration-200 group-hover:scale-[1.02]" loading="lazy" />
+      <button
+        onClick={() => onImageClick?.(att.url)}
+        className="block rounded-xl overflow-hidden mb-1.5 group w-full"
+      >
+        <img
+          src={att.url}
+          alt={att.fileName}
+          className="max-w-full w-full max-h-64 object-cover rounded-xl transition-transform duration-200 group-hover:scale-[1.02]"
+          loading="lazy"
+        />
       </button>
     );
   }
-  if (att.mimeType.startsWith("audio/")) return <AudioPlayer attachment={att} isSent={isSent} />;
+  if (att.mimeType.startsWith("audio/"))
+    return <AudioPlayer attachment={att} isSent={isSent} />;
   return (
-    <a href={att.url} target="_blank" rel="noopener noreferrer"
-      className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-[var(--color-hover)] hover:bg-[var(--color-hover)] transition-colors mb-1.5 text-sm">
+    <a
+      href={att.url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-[var(--color-hover)] hover:bg-[var(--color-hover)] transition-colors mb-1.5 text-sm"
+    >
       <span className="text-lg">{getFileIcon(att.mimeType)}</span>
       <div className="min-w-0 flex-1">
-        <div className="truncate font-medium text-[var(--color-text)]">{att.fileName}</div>
-        <div className="text-xs text-[var(--color-muted)]">{formatFileSize(att.fileSize)}</div>
+        <div className="truncate font-medium text-[var(--color-text)]">
+          {att.fileName}
+        </div>
+        <div className="text-xs text-[var(--color-muted)]">
+          {formatFileSize(att.fileSize)}
+        </div>
       </div>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-[var(--color-muted)]">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+      <svg
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className="shrink-0 text-[var(--color-muted)]"
+      >
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" y1="15" x2="12" y2="3" />
       </svg>
     </a>
   );
