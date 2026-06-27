@@ -5,10 +5,10 @@ const config: CapacitorConfig = {
   appName: 'Mentora',
   webDir: 'out',
 
-  server: {
-    url: 'http://10.0.2.2:3000',
-    cleartext: true,
-  },
+  // server: {
+  //   url: 'http://10.0.2.2:3000',
+  //   cleartext: true,
+  // },
 
   android: {
     buildOptions: {

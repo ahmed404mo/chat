@@ -45,10 +45,11 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Build Android APK (debug)
-        run: cd android && ./gradlew assembleDebug
+        run: ./gradlew assembleDebug
+        working-directory: android
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-debug
+          name: mentora
           path: android/app/build/outputs/apk/debug/*.apk
