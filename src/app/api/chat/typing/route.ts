@@ -14,28 +14,30 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "conversationId and action are required" }, { status: 400 });
     }
 
-    if (action === "typing") {
-      await pusher.trigger(`private-conversation-${conversationId}`, "user-typing", {
-        userId: user.id,
-        name: user.name,
-        conversationId,
-      });
-    } else if (action === "stop-typing") {
-      await pusher.trigger(`private-conversation-${conversationId}`, "user-stop-typing", {
-        userId: user.id,
-        conversationId,
-      });
-    } else if (action === "recording") {
-      await pusher.trigger(`private-conversation-${conversationId}`, "user-recording", {
-        userId: user.id,
-        conversationId,
-      });
-    } else if (action === "stop-recording") {
-      await pusher.trigger(`private-conversation-${conversationId}`, "user-stop-recording", {
-        userId: user.id,
-        conversationId,
-      });
-    }
+    try {
+      if (action === "typing") {
+        await pusher.trigger(`private-conversation-${conversationId}`, "user-typing", {
+          userId: user.id,
+          name: user.name,
+          conversationId,
+        });
+      } else if (action === "stop-typing") {
+        await pusher.trigger(`private-conversation-${conversationId}`, "user-stop-typing", {
+          userId: user.id,
+          conversationId,
+        });
+      } else if (action === "recording") {
+        await pusher.trigger(`private-conversation-${conversationId}`, "user-recording", {
+          userId: user.id,
+          conversationId,
+        });
+      } else if (action === "stop-recording") {
+        await pusher.trigger(`private-conversation-${conversationId}`, "user-stop-recording", {
+          userId: user.id,
+          conversationId,
+        });
+      }
+    } catch (e) { console.error("pusher trigger error:", e); }
 
     return NextResponse.json({ success: true });
   } catch (err) {

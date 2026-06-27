@@ -8,7 +8,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { connectSocket, disconnectSocket } from "@/lib/socket";
+import { connectSocket, disconnectSocket, isTokenExpired } from "@/lib/socket";
 
 interface User {
   id: string;
@@ -46,9 +46,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const storedToken = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
     if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUser(JSON.parse(storedUser));
-      connectSocket(storedToken, handleAuthError);
+      if (isTokenExpired(storedToken)) {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+      } else {
+        setToken(storedToken);
+        setUser(JSON.parse(storedUser));
+        connectSocket(storedToken, handleAuthError);
+      }
     }
     setLoading(false);
   }, [handleAuthError]);

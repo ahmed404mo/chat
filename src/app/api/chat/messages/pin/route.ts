@@ -22,11 +22,11 @@ export async function PATCH(req: Request) {
       data: { pinned: !message.pinned },
     });
 
-    await pusher.trigger(`private-conversation-${conversationId}`, "message-pinned", {
+    try { await pusher.trigger(`private-conversation-${conversationId}`, "message-pinned", {
       messageId,
       conversationId,
       pinned: updated.pinned,
-    });
+    }); } catch (e) { console.error("pusher trigger error:", e); }
 
     return NextResponse.json({ success: true, pinned: updated.pinned });
   } catch (err) {

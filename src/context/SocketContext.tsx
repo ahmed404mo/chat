@@ -49,12 +49,13 @@ export interface Message {
 interface Participant {
   id: string;
   userId: string;
-  user: { id: string; name: string; role: string };
+  user: { id: string; name: string; role: string; avatarUrl?: string | null };
 }
 
 interface Conversation {
   id: string;
   title: string | null;
+  imageUrl: string | null;
   isGroup: boolean;
   createdById: string | null;
   participants: Participant[];
@@ -93,20 +94,22 @@ interface SocketContextType {
   sendMessage: (conversationId: string, content: string, repliedToId?: string, files?: any[], repliedToMessage?: Message | null) => void;
   emitTyping: (conversationId: string) => void;
   emitStopTyping: (conversationId: string) => void;
-  loadMoreMessages: (conversationId: string) => void;
+  loadMoreMessages: (conversationId: string) => Promise<void>;
+  loadingMoreMessages: Record<string, boolean>;
   hasMoreMessages: Record<string, boolean>;
   unreadCounts: Record<string, number>;
   joinViaInvite: (code: string) => Promise<string>;
   generateInvite: (conversationId: string, expiresInHours?: number, maxUses?: number) => Promise<InviteInfo>;
   createConversation: (participantIds: string[], title?: string) => Promise<Conversation>;
   isManager: boolean;
-  users: { id: string; name: string; email: string; role: string }[];
+  users: { id: string; name: string; email: string; role: string; avatarUrl?: string | null }[];
   fetchUsers: () => Promise<void>;
   fetchConversations: () => Promise<void>;
   addMembers: (conversationId: string, userIds: string[]) => Promise<void>;
   sendFileMessage: (conversationId: string, content: string, attachments: Omit<Attachment, "id" | "createdAt">[]) => void;
   deleteConversation: (conversationId: string) => Promise<void>;
   renameConversation: (conversationId: string, title: string) => Promise<void>;
+  uploadConversationImage: (conversationId: string, file: File) => Promise<string>;
   addReaction: (messageId: string, emoji: string, conversationId: string) => void;
   removeReaction: (messageId: string, conversationId: string) => void;
   markAsRead: (conversationId: string) => void;
@@ -133,7 +136,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
   const [hasMoreMessages, setHasMoreMessages] = useState<Record<string, boolean>>({});
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
-  const [users, setUsers] = useState<{ id: string; name: string; email: string; role: string }[]>([]);
+  const [users, setUsers] = useState<{ id: string; name: string; email: string; role: string; avatarUrl?: string | null }[]>([]);
   const cursors = useRef<Record<string, string | null>>({});
   const notificationAudio = useRef<HTMLAudioElement | null>(null);
   const activeConversationRef = useRef(activeConversation);
@@ -352,9 +355,13 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         }
       });
 
-      channel.bind("conversation-updated", ({ conversationId, title }: { conversationId: string; title: string }) => {
+      channel.bind("conversation-updated", ({ conversationId, title, imageUrl }: { conversationId: string; title?: string; imageUrl?: string }) => {
         setConversations((prev) =>
-          prev.map((c) => (c.id === conversationId ? { ...c, title } : c))
+          prev.map((c) =>
+            c.id === conversationId
+              ? { ...c, ...(title !== undefined && { title }), ...(imageUrl !== undefined && { imageUrl }) }
+              : c
+          )
         );
       });
 
@@ -559,12 +566,17 @@ export function SocketProvider({ children }: { children: ReactNode }) {
     }).catch(() => {});
   }, [token]);
 
+  const [loadingMoreMessages, setLoadingMoreMessages] = useState<Record<string, boolean>>({});
+
   const loadMoreMessages = useCallback(
-    (conversationId: string) => {
-      if (!hasMoreMessages[conversationId]) return;
-      fetchMessages(conversationId);
+    async (conversationId: string) => {
+      if (hasMoreMessages[conversationId] === false) return;
+      if (loadingMoreMessages[conversationId]) return;
+      setLoadingMoreMessages((prev) => ({ ...prev, [conversationId]: true }));
+      await fetchMessages(conversationId);
+      setLoadingMoreMessages((prev) => ({ ...prev, [conversationId]: false }));
     },
-    [hasMoreMessages, fetchMessages]
+    [hasMoreMessages, loadingMoreMessages, fetchMessages]
   );
 
   const joinViaInvite = useCallback(async (code: string): Promise<string> => {
@@ -653,6 +665,34 @@ export function SocketProvider({ children }: { children: ReactNode }) {
           c.id === conversationId ? { ...c, title: title.trim() } : c
         )
       );
+    },
+    [token]
+  );
+
+  const uploadConversationImage = useCallback(
+    async (conversationId: string, file: File): Promise<string> => {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`/api/chat/conversations/${conversationId}/image`, {
+        method: "POST",
+        headers: authHeaders(token),
+        body: formData,
+      });
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error("Upload: non-JSON response", text);
+        throw new Error(`Server error: ${res.status}`);
+      }
+      if (!res.ok) throw new Error(data.error || `Failed to upload image (${res.status})`);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === conversationId ? { ...c, imageUrl: data.url } : c
+        )
+      );
+      return data.url;
     },
     [token]
   );
@@ -770,6 +810,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         emitTyping,
         emitStopTyping,
         loadMoreMessages,
+        loadingMoreMessages,
         hasMoreMessages,
         unreadCounts,
         joinViaInvite,
@@ -782,6 +823,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         addMembers,
         deleteConversation,
         renameConversation,
+        uploadConversationImage,
         addReaction,
         removeReaction,
         editMessage,

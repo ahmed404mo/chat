@@ -24,13 +24,13 @@ export async function POST(req: Request) {
 
     if (forEveryone) {
       await prisma.message.delete({ where: { id: messageId } });
-      await pusher.trigger(`private-conversation-${conversationId}`, "message-deleted", { messageId, conversationId });
+      try { await pusher.trigger(`private-conversation-${conversationId}`, "message-deleted", { messageId, conversationId }); } catch (e) { console.error("pusher trigger error:", e); }
     } else {
       const placeholder = await prisma.message.update({
         where: { id: messageId },
         data: { content: "🗑️ This message was deleted", attachments: { set: [] } },
       });
-      await pusher.trigger(`private-conversation-${conversationId}`, "message-edited", placeholder);
+      try { await pusher.trigger(`private-conversation-${conversationId}`, "message-edited", placeholder); } catch (e) { console.error("pusher trigger error:", e); }
     }
 
     return NextResponse.json({ success: true });

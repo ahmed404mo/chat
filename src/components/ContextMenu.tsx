@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface ContextMenuAction {
   id: string;
   label: string;
-  icon: string;
+  icon: ReactNode;
   onClick: () => void;
   danger?: boolean;
   divider?: boolean;
@@ -101,7 +101,7 @@ export default function ContextMenu({ x, y, actions, onClose, isOwn }: ContextMe
                     : "theme-dark:text-gray-200 text-gray-700 hover:theme-dark:bg-white/[0.06] hover:bg-gray-100"
                   }`}
               >
-                <span className="text-base w-5 text-center shrink-0">{action.icon}</span>
+                <span className="w-5 h-5 shrink-0 flex items-center justify-center">{action.icon}</span>
                 <span className="font-medium">{action.label}</span>
               </button>
             </li>

@@ -146,11 +146,11 @@ export async function POST(req: Request) {
       }),
     ]);
 
-    await pusher.trigger(`private-conversation-${invite.conversationId}`, "member-added", {
+    try { await pusher.trigger(`private-conversation-${invite.conversationId}`, "member-added", {
       conversationId: invite.conversationId,
       addedUserIds: [user.id],
       addedUsers: [{ id: user.id, name: user.name, role: user.role }],
-    });
+    }); } catch (e) { console.error("pusher trigger error:", e); }
 
     return NextResponse.json(
       {

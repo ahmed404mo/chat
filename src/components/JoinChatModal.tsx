@@ -12,7 +12,7 @@ interface JoinChatModalProps {
 }
 
 export default function JoinChatModal({ open, onClose }: JoinChatModalProps) {
-  const { fetchConversations } = useChat();
+  const { joinViaInvite } = useChat();
   const { addToast } = useToast();
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,23 +29,11 @@ export default function JoinChatModal({ open, onClose }: JoinChatModalProps) {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch("/api/chat/invite/join", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-        body: JSON.stringify({ code: code.trim().toUpperCase() }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Invalid invitation code");
+      await joinViaInvite(code.trim().toUpperCase());
 
       addToast("Successfully joined the conversation!", "success");
-      // نضيف تأخير بسيط جداً لإعطاء فرصة للخادم لتحديث البيانات قبل أن نطلبها
-      setTimeout(async () => {
-        await fetchConversations();
-        onClose();
-      }, 200);
+      // The `joinViaInvite` function already refetches conversations.
+      onClose();
       setCode("");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to join chat");

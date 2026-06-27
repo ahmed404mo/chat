@@ -39,6 +39,16 @@ export async function uploadFile(
   });
 }
 
+export function getPublicIdFromUrl(url: string): string | null {
+  try {
+    const urlObj = new URL(url);
+    const match = urlObj.pathname.match(/\/upload\/v\d+\/(.+)\.\w+$/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function deleteFile(publicId: string): Promise<void> {
   try {
     await cloudinary.uploader.destroy(publicId);

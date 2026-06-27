@@ -33,7 +33,7 @@ export async function PATCH(req: Request) {
       },
     });
 
-    await pusher.trigger(`private-conversation-${conversationId}`, "message-edited", updated);
+    try { await pusher.trigger(`private-conversation-${conversationId}`, "message-edited", updated); } catch (e) { console.error("pusher trigger error:", e); }
 
     return NextResponse.json({ success: true });
   } catch (err) {

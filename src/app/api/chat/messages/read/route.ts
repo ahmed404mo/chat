@@ -38,14 +38,14 @@ export async function POST(req: Request) {
       skipDuplicates: true,
     });
 
-    await pusher.trigger(`private-conversation-${conversationId}`, "messages-read", {
+    try { await pusher.trigger(`private-conversation-${conversationId}`, "messages-read", {
       conversationId,
       userId: user.id,
       userName: user.name,
       userRole: user.role,
       readAt: now.toISOString(),
       messageIds: unreadMessages.map((m) => m.id),
-    });
+    }); } catch (e) { console.error("pusher trigger error:", e); }
 
     return NextResponse.json({ success: true, readCount: unreadMessages.length });
   } catch (err) {

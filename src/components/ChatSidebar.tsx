@@ -26,7 +26,7 @@ function getConversationName(
   participants: {
     id: string;
     userId: string;
-    user: { id: string; name: string };
+    user: { id: string; name: string; avatarUrl?: string | null };
   }[],
   userId: string,
   title: string | null,
@@ -34,6 +34,33 @@ function getConversationName(
   if (title) return title;
   const others = participants.filter((p) => p.userId !== userId);
   return others.map((p) => p.user.name).join(", ") || "Unknown";
+}
+
+function getConversationAvatar(
+  conv: {
+    imageUrl?: string | null;
+    isGroup: boolean;
+    participants: {
+      id: string;
+      userId: string;
+      user: { id: string; name: string; avatarUrl?: string | null };
+    }[];
+    title?: string | null;
+  },
+  userId: string,
+): { src: string | null; name: string } {
+  if (conv.imageUrl) {
+    return { src: conv.imageUrl, name: "" };
+  }
+  if (!conv.isGroup) {
+    const other = conv.participants.find((p) => p.userId !== userId)?.user;
+    if (other?.avatarUrl) {
+      return { src: other.avatarUrl, name: other.name };
+    }
+    return { src: null, name: other?.name || "?" };
+  }
+  const name = conv.title || "G";
+  return { src: null, name };
 }
 
 export default function ChatSidebar() {
@@ -234,8 +261,15 @@ export default function ChatSidebar() {
               user!.id,
               conv.title,
             );
+            const avatarInfo = getConversationAvatar(conv, user!.id);
             const lastMsg = conv.messages[0];
             const unread = unreadCounts[conv.id] || 0;
+            const otherUserId = conv.participants.find(
+              (p) => p.userId !== user!.id,
+            )?.userId;
+            const isOtherOnline = otherUserId
+              ? onlineUsers.has(otherUserId)
+              : false;
 
             return (
               <motion.div
@@ -249,35 +283,69 @@ export default function ChatSidebar() {
                 }}
                 className={`flex items-center gap-3 px-3 py-3 cursor-pointer transition-all duration-200 rounded-2xl mb-0.5 ${
                   activeConversation === conv.id
-                    ? "bg-blue-500/10 border border-blue-500/20"
+                    ? "bg-blue-500/10 border border-blue-500/20 shadow-[0_0_12px_rgba(59,130,246,0.08)]"
                     : "theme-dark:hover:bg-white/5 hover:bg-gray-100 border border-transparent"
                 }`}
                 onClick={() => setActiveConversation(conv.id)}
               >
                 <div className="relative shrink-0">
                   <div
-                    className="rounded-full flex items-center justify-center theme-dark:text-white font-bold bg-gradient-to-br from-blue-500 to-purple-600 shadow-[0_0_8px_rgba(99,102,241,0.2)]"
+                    className="rounded-full flex items-center justify-center theme-dark:text-white font-bold bg-gradient-to-br from-blue-500 to-purple-600 shadow-[0_0_8px_rgba(99,102,241,0.2)] overflow-hidden"
                     style={{ width: 44, height: 44, fontSize: "1rem" }}
                   >
-                    {name.charAt(0).toUpperCase()}
+                    {avatarInfo.src ? (
+                      <img
+                        src={avatarInfo.src}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      avatarInfo.name.charAt(0).toUpperCase()
+                    )}
                   </div>
+                  {conv.isGroup ? (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-gradient-to-br from-blue-600 to-purple-600 border-2 theme-dark:border-[#09090b] border-white flex items-center justify-center">
+                      <svg
+                        width="8"
+                        height="8"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="3"
+                      >
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                      </svg>
+                    </div>
+                  ) : isOtherOnline ? (
+                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 theme-dark:border-[#09090b] border-white rounded-full shadow-[0_0_6px_rgba(34,197,94,0.6)]" />
+                  ) : (
+                    <span className="absolute bottom-0 right-0 w-3 h-3 theme-dark:bg-gray-600 bg-gray-400 border-2 theme-dark:border-[#09090b] border-white rounded-full" />
+                  )}
                   {unread > 0 && activeConversation !== conv.id && (
                     <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.9)] animate-pulse" />
-                  )}
-                  {onlineUsers.has(
-                    conv.participants.find((p) => p.userId !== user!.id)
-                      ?.userId || "",
-                  ) && (
-                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 theme-dark:border-[#09090b] border-white rounded-full" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold text-sm theme-dark:text-white text-gray-900 truncate">
                     {name}
                   </div>
-                  {lastMsg && (
-                    <div className="text-xs theme-dark:text-gray-500 text-gray-400 truncate mt-0.5">
-                      {lastMsg.content}
+                  {lastMsg ? (
+                    <div className="text-xs theme-dark:text-gray-500 text-gray-400 truncate mt-0.5 flex items-center gap-1">
+                      {lastMsg.senderId !== user!.id && conv.isGroup && (
+                        <span className="font-medium theme-dark:text-gray-400 text-gray-500">
+                          {lastMsg.sender?.name}:
+                        </span>
+                      )}
+                      {lastMsg.attachments?.length > 0
+                        ? lastMsg.content || "📎 File"
+                        : lastMsg.content}
+                    </div>
+                  ) : (
+                    <div className="text-xs theme-dark:text-gray-600 text-gray-400 truncate mt-0.5">
+                      {conv.isGroup ? "Group created" : "No messages yet"}
                     </div>
                   )}
                 </div>
@@ -292,37 +360,6 @@ export default function ChatSidebar() {
                       {unread > 99 ? "99+" : unread}
                     </div>
                   )}
-                  {/* {isManager && (
-                    <button
-                      className="theme-dark:text-gray-500 text-gray-400 hover:text-blue-400 transition-colors p-0.5"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setInviteTarget(conv.id);
-                      }}
-                      title="Generate invite code"
-                    >
-                      <svg
-                        width="13"
-                        height="13"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      >
-                        <rect
-                          x="3"
-                          y="11"
-                          width="18"
-                          height="11"
-                          rx="2"
-                          ry="2"
-                        />
-                        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                      </svg>
-                    </button>
-                  )} */}
                 </div>
               </motion.div>
             );

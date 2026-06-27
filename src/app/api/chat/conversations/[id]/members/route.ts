@@ -97,11 +97,11 @@ export async function POST(
       },
     });
 
-    await pusher.trigger(`private-conversation-${id}`, "member-added", {
+    try { await pusher.trigger(`private-conversation-${id}`, "member-added", {
       conversationId: id,
       addedUserIds: newUserIds,
       addedUsers,
-    });
+    }); } catch (e) { console.error("pusher trigger error:", e); }
 
     return NextResponse.json(
       {

@@ -19,11 +19,11 @@ export async function POST(req: Request) {
       include: { user: { select: { id: true, name: true, role: true } } },
     });
 
-    await pusher.trigger(`private-conversation-${conversationId}`, "message-reaction-added", {
+    try { await pusher.trigger(`private-conversation-${conversationId}`, "message-reaction-added", {
       messageId,
       conversationId,
       reaction: { id: reaction.id, emoji: reaction.emoji, userId: reaction.userId, user: reaction.user },
-    });
+    }); } catch (e) { console.error("pusher trigger error:", e); }
 
     return NextResponse.json({ success: true });
   } catch (err) {
@@ -50,12 +50,12 @@ export async function DELETE(req: Request) {
 
     await prisma.messageReaction.delete({ where: { id: reaction.id } });
 
-    await pusher.trigger(`private-conversation-${conversationId}`, "message-reaction-removed", {
+    try { await pusher.trigger(`private-conversation-${conversationId}`, "message-reaction-removed", {
       messageId,
       conversationId,
       userId: user.id,
       emoji: reaction.emoji,
-    });
+    }); } catch (e) { console.error("pusher trigger error:", e); }
 
     return NextResponse.json({ success: true });
   } catch (err) {

@@ -518,8 +518,8 @@ const MessageBubble = memo(function MessageBubble({
           {/* Content */}
           {message.content &&
             message.content !== "🗑️ This message was deleted" && (
-              <div className="flex items-end gap-2">
-                <p className="text-sm theme-dark:text-gray-100 text-gray-800 whitespace-pre-wrap break-words flex-1 leading-relaxed">
+              <div className="flex items-end gap-2 max-w-full min-w-0">
+                <p className="text-sm theme-dark:text-gray-100 text-gray-800 whitespace-pre-wrap break-words leading-relaxed overflow-hidden [overflow-wrap:anywhere]">
                   {message.content}
                 </p>
               </div>

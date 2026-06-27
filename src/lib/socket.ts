@@ -13,7 +13,7 @@ export function getPusherClient(): Pusher | null {
   return pusherClient;
 }
 
-function isTokenExpired(token: string): boolean {
+export function isTokenExpired(token: string): boolean {
   try {
     const payload = JSON.parse(atob(token.split(".")[1]));
     return payload.exp * 1000 < Date.now();

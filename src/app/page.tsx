@@ -2,6 +2,7 @@
 import { useState, useEffect, type FormEvent, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import SplashScreen from "@/components/SplashScreen";
 
 function AuthForm() {
   const [isLogin, setIsLogin] = useState(true);
@@ -193,9 +194,7 @@ export default function AuthPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-[100dvh] flex items-center justify-center bg-[#09090b]">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
-        </div>
+        <SplashScreen message="جاري التحميل..." />
       }
     >
       <AuthForm />

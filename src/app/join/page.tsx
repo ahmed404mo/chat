@@ -3,11 +3,12 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import SplashScreen from "@/components/SplashScreen";
 
 function JoinContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user, loading } = useAuth();
+  const { user, token, loading } = useAuth();
   const [code, setCode] = useState(searchParams.get("code") || "");
   const [status, setStatus] = useState<
     "idle" | "joining" | "success" | "error" | "no_code"
@@ -34,9 +35,7 @@ function JoinContent() {
         setCheckingChats(true);
         try {
           const res = await fetch("/api/chat/conversations", {
-            headers: {
-              authorization: `Bearer ${localStorage.getItem("token")}`,
-            },
+            headers: { authorization: `Bearer ${token}` },
           });
           const data = await res.json();
 
@@ -93,7 +92,7 @@ function JoinContent() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          authorization: `Bearer ${localStorage.getItem("token")}`,
+          authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ code: code.trim().toUpperCase() }),
       });
@@ -118,11 +117,7 @@ function JoinContent() {
 
   // إظهار شاشة التحميل في حالة تسجيل الدخول أو أثناء فحص الجروبات
   if (loading || checkingChats || (user && status === "idle")) {
-    return (
-      <div className="min-h-[100dvh] flex items-center justify-center theme-dark:bg-[#09090b] bg-gray-50 relative overflow-hidden">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-r-2 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
-      </div>
-    );
+    return <SplashScreen message="جاري التحميل..." />;
   }
 
   if (!user) return null;
@@ -212,13 +207,18 @@ function JoinContent() {
             </p>
           </>
         ) : (
-          // الحالة الافتراضية (joining)
-          <>
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-r-2 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)] mx-auto"></div>
-            <p className="theme-dark:text-gray-400 text-gray-500 text-sm mt-6">
+          // Joining state
+          <div className="flex flex-col items-center">
+            <div className="w-16 h-16 rounded-[1.25rem] bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.3)] mb-4">
+              <svg className="animate-spin w-8 h-8 text-white" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            </div>
+            <p className="theme-dark:text-gray-400 text-gray-500 text-sm">
               Joining conversation, please wait...
             </p>
-          </>
+          </div>
         )}
       </div>
     </div>
@@ -229,9 +229,7 @@ export default function JoinPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-[100dvh] flex items-center justify-center theme-dark:bg-[#09090b] bg-gray-50">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-r-2 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
-        </div>
+        <SplashScreen message="جاري التحميل..." />
       }
     >
       <JoinContent />

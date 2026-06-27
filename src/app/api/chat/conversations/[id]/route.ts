@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { pusher } from "@/lib/pusher-server";
 import { getUserFromToken, canManageChats } from "@/lib/auth";
-import { deleteFiles } from "@/lib/cloudinary";
+import { deleteFile, deleteFiles, getPublicIdFromUrl } from "@/lib/cloudinary";
 
 export async function PATCH(
   req: Request,
@@ -22,11 +22,27 @@ export async function PATCH(
 
   try {
     const { id } = await params;
-    const { title } = await req.json();
+    const body = await req.json();
 
-    if (!title || !title.trim()) {
+    const data: Record<string, any> = {};
+
+    if (body.title !== undefined) {
+      if (!body.title?.trim()) {
+        return NextResponse.json(
+          { error: "Title is required" },
+          { status: 400 }
+        );
+      }
+      data.title = body.title.trim();
+    }
+
+    if (body.imageUrl !== undefined) {
+      data.imageUrl = body.imageUrl;
+    }
+
+    if (Object.keys(data).length === 0) {
       return NextResponse.json(
-        { error: "Title is required" },
+        { error: "No fields to update" },
         { status: 400 }
       );
     }
@@ -41,13 +57,13 @@ export async function PATCH(
 
     const updated = await prisma.conversation.update({
       where: { id },
-      data: { title: title.trim() },
+      data,
     });
 
-    await pusher.trigger(`private-conversation-${id}`, "conversation-updated", {
+    try { await pusher.trigger(`private-conversation-${id}`, "conversation-updated", {
       conversationId: id,
-      title: title.trim(),
-    });
+      ...data,
+    }); } catch (e) { console.error("pusher trigger error:", e); }
 
     return NextResponse.json({ conversation: updated });
   } catch (err) {
@@ -83,6 +99,14 @@ export async function DELETE(
         { error: "Conversation not found" },
         { status: 404 }
       );
+    }
+
+    // Delete group image from Cloudinary if it exists
+    if (conversation.imageUrl) {
+      const publicId = getPublicIdFromUrl(conversation.imageUrl);
+      if (publicId) {
+        await deleteFile(publicId);
+      }
     }
 
     // Collect all Cloudinary publicIds from attachments in this conversation

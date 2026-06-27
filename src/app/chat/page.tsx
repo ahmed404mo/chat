@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import ChatSidebar from "@/components/ChatSidebar";
 import ChatWindow from "@/components/ChatWindow";
 import BottomTabBar from "@/components/BottomTabBar";
+import SplashScreen from "@/components/SplashScreen";
 
 function ChatPageInner() {
   const { user, loading } = useAuth();
@@ -54,17 +55,7 @@ function ChatPageInner() {
   }, [user, loading, router]);
 
   if (loading) {
-    return (
-      <div className="min-h-[100dvh] flex items-center justify-center theme-dark:bg-[#09090b] bg-gray-50 relative overflow-hidden">
-        <div className="absolute top-[-10%] ltr:left-[-10%] rtl:right-[-10%] w-96 h-96 bg-blue-600/30 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] ltr:right-[-10%] rtl:left-[-10%] w-96 h-96 bg-purple-600/30 rounded-full blur-[120px] pointer-events-none"></div>
-
-        <div className="flex flex-col items-center z-10 animate-fade-in-up">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-r-2 border-blue-500 mb-4 shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
-          <div className="text-sm theme-dark:text-gray-400 text-gray-500 font-medium tracking-wide">Loading chats...</div>
-        </div>
-      </div>
-    );
+    return <SplashScreen message="جاري تحميل المحادثات..." />;
   }
 
   if (!user) return null;
@@ -114,7 +105,9 @@ function ChatPageInner() {
             <ChatWindow />
           </main>
         </div>
-        <BottomTabBar />
+        <div className={activeConversation ? "sm:block hidden" : ""}>
+          <BottomTabBar />
+        </div>
       </div>
     </div>
   );

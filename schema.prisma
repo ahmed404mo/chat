@@ -68,6 +68,7 @@ model PortfolioItem {
 model Conversation {
   id           String                     @id @default(cuid())
   title        String?
+  imageUrl     String?
   isGroup      Boolean                    @default(false)
   createdById  String?
   createdBy    User?                      @relation(fields: [createdById], references: [id])

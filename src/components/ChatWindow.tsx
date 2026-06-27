@@ -52,6 +52,9 @@ export default function ChatWindow() {
     emitTyping,
     emitStopTyping,
     typingUsers: contextTypingUsers,
+    loadMoreMessages,
+    hasMoreMessages,
+    loadingMoreMessages,
   } = useChat();
   const [showInfo, setShowInfo] = useState(false);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
@@ -68,6 +71,13 @@ export default function ChatWindow() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const scrollPositionRef = useRef<number>(0);
+
+  // Load messages when conversation is opened
+  useEffect(() => {
+    if (activeConversation) {
+      loadMoreMessages(activeConversation);
+    }
+  }, [activeConversation, loadMoreMessages]);
 
   const conversation = conversations.find((c) => c.id === activeConversation);
   const convMessages = conversation ? messages[conversation.id] || [] : [];
@@ -97,6 +107,30 @@ export default function ChatWindow() {
       });
     });
   }, []);
+
+  // Infinite scroll: load older messages when scrolled to top
+  const handleScroll = useCallback(() => {
+    const container = messagesContainerRef.current;
+    if (!container || !activeConversation) return;
+    if (container.scrollTop < 100 && hasMoreMessages[activeConversation] && !loadingMoreMessages[activeConversation]) {
+      const prevScrollTop = container.scrollTop;
+      const prevScrollHeight = container.scrollHeight;
+      loadMoreMessages(activeConversation).then(() => {
+        requestAnimationFrame(() => {
+          if (container) {
+            container.scrollTop = container.scrollHeight - prevScrollHeight + prevScrollTop;
+          }
+        });
+      });
+    }
+  }, [activeConversation, hasMoreMessages, loadingMoreMessages, loadMoreMessages]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) return;
+    container.addEventListener("scroll", handleScroll, { passive: true });
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [handleScroll]);
 
   // Auto scroll on new messages
   useEffect(() => {
@@ -218,13 +252,23 @@ export default function ChatWindow() {
         {
           id: "reply",
           label: "Reply",
-          icon: "↩️",
+          icon: (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 17 4 12 9 7" />
+              <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+            </svg>
+          ),
           onClick: () => setReplyingTo(contextMenu.message),
         },
         {
           id: "copy",
           label: "Copy",
-          icon: "📋",
+          icon: (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          ),
           onClick: () => handleCopy(contextMenu.message.content),
         },
         ...(contextMenu.message.senderId === user?.id // Actions for the message owner
@@ -232,13 +276,25 @@ export default function ChatWindow() {
               {
                 id: "edit",
                 label: "Edit",
-                icon: "✏️",
+                icon: (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                ),
                 onClick: () => setEditingMessage(contextMenu.message),
               },
               {
                 id: "delete",
                 label: "Delete for everyone",
-                icon: "🗑️",
+                icon: (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                    <line x1="10" y1="11" x2="10" y2="17" />
+                    <line x1="14" y1="11" x2="14" y2="17" />
+                  </svg>
+                ),
                 danger: true as const,
                 onClick: () =>
                   deleteMessage(
@@ -250,7 +306,12 @@ export default function ChatWindow() {
               {
                 id: "delete-me",
                 label: "Delete for me",
-                icon: "🚫",
+                icon: (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 12h18" />
+                    <path d="M12 3v18" />
+                  </svg>
+                ),
                 danger: true as const,
                 onClick: () =>
                   deleteMessage(
@@ -265,7 +326,14 @@ export default function ChatWindow() {
                 {
                   id: "delete",
                   label: "Delete for everyone",
-                  icon: "🗑️",
+                  icon: (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6" />
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                      <line x1="10" y1="11" x2="10" y2="17" />
+                      <line x1="14" y1="11" x2="14" y2="17" />
+                    </svg>
+                  ),
                   danger: true as const,
                   onClick: () =>
                     deleteMessage(
@@ -336,12 +404,25 @@ export default function ChatWindow() {
               </svg>
             </button>
             <div className="relative shrink-0">
-              <div
-                className="rounded-full flex items-center justify-center theme-dark:text-white font-bold bg-gradient-to-br from-blue-500 to-purple-600"
-                style={{ width: 40, height: 40, fontSize: "1rem" }}
-              >
-                {convName.charAt(0).toUpperCase()}
-              </div>
+              {(isGroup && conversation.imageUrl) || (!isGroup && otherParticipant?.user?.avatarUrl) ? (
+                <div
+                  className="rounded-full overflow-hidden shadow-[0_0_8px_rgba(99,102,241,0.2)]"
+                  style={{ width: 40, height: 40 }}
+                >
+                  <img
+                    src={isGroup ? conversation.imageUrl! : otherParticipant?.user?.avatarUrl!}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div
+                  className="rounded-full flex items-center justify-center theme-dark:text-white font-bold bg-gradient-to-br from-blue-500 to-purple-600 shadow-[0_0_8px_rgba(99,102,241,0.2)]"
+                  style={{ width: 40, height: 40, fontSize: "1rem" }}
+                >
+                  {convName.charAt(0).toUpperCase()}
+                </div>
+              )}
               {otherParticipant && (
                 <span
                   className={`absolute bottom-0 right-0 w-2.5 h-2.5 border-2 theme-dark:border-[#1f2c33] border-white rounded-full ${
@@ -428,6 +509,17 @@ export default function ChatWindow() {
               <>
                 <div className="flex-1" />
                 <div className="py-4">
+                  {activeConversation && loadingMoreMessages[activeConversation] && (
+                    <div className="flex justify-center py-3">
+                      <div className="flex items-center gap-2 text-xs theme-dark:text-gray-400 text-gray-500">
+                        <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                        </svg>
+                        Loading older messages...
+                      </div>
+                    </div>
+                  )}
                   {(convMessages as any[]).map((msg: any, idx: number) => {
                     const isSent = msg.senderId === user!.id;
                     const prevMsg = convMessages[idx - 1];

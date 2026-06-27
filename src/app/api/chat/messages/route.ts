@@ -111,7 +111,7 @@ export async function POST(req: Request) {
       data: { updatedAt: new Date() },
     });
 
-    await pusher.trigger(`private-conversation-${conversationId}`, "new-message", message);
+    try { await pusher.trigger(`private-conversation-${conversationId}`, "new-message", message); } catch (e) { console.error("pusher trigger error:", e); }
 
     return NextResponse.json({ success: true, message }, { status: 201 });
   } catch (err) {

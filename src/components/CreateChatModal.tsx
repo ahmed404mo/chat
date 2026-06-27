@@ -150,10 +150,18 @@ export default function CreateChatModal({
                       />
                       <div className="flex items-center gap-3 flex-1">
                         <div
-                          className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center theme-dark:text-white font-bold shrink-0 shadow-[0_0_8px_rgba(99,102,241,0.2)]"
+                          className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center theme-dark:text-white font-bold shrink-0 shadow-[0_0_8px_rgba(99,102,241,0.2)] overflow-hidden"
                           style={{ fontSize: "0.85rem" }}
                         >
-                          {u.name.charAt(0).toUpperCase()}
+                          {u.avatarUrl ? (
+                            <img
+                              src={u.avatarUrl}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            u.name.charAt(0).toUpperCase()
+                          )}
                         </div>
                         <div>
                           <div className="text-sm font-semibold theme-dark:text-white text-gray-900">

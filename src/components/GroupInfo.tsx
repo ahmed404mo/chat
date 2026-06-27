@@ -10,12 +10,13 @@ import { useToast } from "./ToastProvider";
 interface Conversation {
   id: string;
   title: string | null;
+  imageUrl: string | null;
   isGroup: boolean;
   createdById: string | null;
   participants: {
     id: string;
     userId: string;
-    user: { id: string; name: string };
+    user: { id: string; name: string; avatarUrl?: string | null };
   }[];
   inviteCodes?: { code: string }[];
 }
@@ -32,9 +33,11 @@ export default function GroupInfo({ conversation, onClose }: GroupInfoProps) {
     users,
     isManager,
     fetchConversations,
+    addMembers,
     deleteConversation,
     generateInvite,
     renameConversation,
+    uploadConversationImage,
   } = useChat();
   const { addToast } = useToast();
   const [showAddMember, setShowAddMember] = useState(false);
@@ -45,6 +48,8 @@ export default function GroupInfo({ conversation, onClose }: GroupInfoProps) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState(conversation.title || "");
   const [renaming, setRenaming] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isAdmin = user?.role === "admin";
   const isParticipant = conversation.participants.some(
@@ -65,23 +70,12 @@ export default function GroupInfo({ conversation, onClose }: GroupInfoProps) {
     if (selectedIds.length === 0) return;
     setAdding(true);
     try {
-      const res = await fetch(
-        `/api/chat/conversations/${conversation.id}/members`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
-          body: JSON.stringify({ userIds: selectedIds }),
-        },
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to add members");
-      addToast(data.message || "Members added", "success");
+      await addMembers(conversation.id, selectedIds);
+      addToast("Members added", "success");
       setSelectedIds([]);
       setShowAddMember(false);
-      await fetchConversations();
+      // fetchConversations is already called inside the addMembers context function,
+      // so this call is no longer needed here.
     } catch (err: unknown) {
       addToast(
         err instanceof Error ? err.message : "Failed to add members",
@@ -139,10 +133,95 @@ export default function GroupInfo({ conversation, onClose }: GroupInfoProps) {
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b theme-dark:border-white/10 border-gray-200">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center theme-dark:text-white font-bold shrink-0 shadow-[0_0_12px_rgba(99,102,241,0.3)]">
-                  {(conversation.title || (conversation.isGroup ? "G" : "C"))
-                    .charAt(0)
-                    .toUpperCase()}
+                <div className="relative shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center theme-dark:text-white font-bold shadow-[0_0_12px_rgba(99,102,241,0.3)] overflow-hidden">
+                    {conversation.imageUrl ? (
+                      <img
+                        src={conversation.imageUrl}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      (conversation.title || (conversation.isGroup ? "G" : "C"))
+                        .charAt(0)
+                        .toUpperCase()
+                    )}
+                  </div>
+                  {canManageGroup && conversation.isGroup && (
+                    <>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          console.log("File selected:", file.name, file.size);
+                          setUploadingImage(true);
+                          try {
+                            await uploadConversationImage(
+                              conversation.id,
+                              file,
+                            );
+                            addToast("Group image updated", "success");
+                          } catch (err) {
+                            console.error("Upload error:", err);
+                            addToast(
+                              err instanceof Error
+                                ? err.message
+                                : "Failed to upload image",
+                              "error",
+                            );
+                          } finally {
+                            setUploadingImage(false);
+                            if (e.target) e.target.value = "";
+                          }
+                        }}
+                      />
+                      <button
+                        className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center text-white border-2 theme-dark:border-[#09090b] border-white transition-transform hover:scale-110 active:scale-95"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingImage}
+                        title="Change group image"
+                      >
+                        {uploadingImage ? (
+                          <svg
+                            className="animate-spin w-3 h-3"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            />
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                            />
+                          </svg>
+                        ) : (
+                          <svg
+                            width="10"
+                            height="10"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                          >
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                            <circle cx="12" cy="13" r="4" />
+                          </svg>
+                        )}
+                      </button>
+                    </>
+                  )}
                 </div>
                 {editingTitle ? (
                   <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -383,13 +462,21 @@ export default function GroupInfo({ conversation, onClose }: GroupInfoProps) {
                   {conversation.participants.map((p) => (
                     <div
                       key={p.id}
-                      className="flex items-center gap-3 px-4 py-2.5 border-b theme-dark:border-white/5 border-gray-200 last:border-b-0"
+                      className="flex items-center gap-3 px-4 py-2.5 border-b theme-dark:border-white/5 border-gray-200 last:border-b-0 hover:theme-dark:bg-white/5 hover:bg-gray-50 transition-colors"
                     >
                       <div
-                        className="rounded-full flex items-center justify-center theme-dark:text-white font-bold shrink-0 bg-gradient-to-br from-blue-500 to-purple-600"
+                        className="rounded-full flex items-center justify-center theme-dark:text-white font-bold shrink-0 bg-gradient-to-br from-blue-500 to-purple-600 overflow-hidden"
                         style={{ width: 34, height: 34, fontSize: "0.85rem" }}
                       >
-                        {p.user.name.charAt(0).toUpperCase()}
+                        {p.user.avatarUrl ? (
+                          <img
+                            src={p.user.avatarUrl}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          p.user.name.charAt(0).toUpperCase()
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-semibold theme-dark:text-white text-gray-900">
@@ -448,8 +535,16 @@ export default function GroupInfo({ conversation, onClose }: GroupInfoProps) {
                             checked={selectedIds.includes(u.id)}
                             onChange={() => toggleUser(u.id)}
                           />
-                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center theme-dark:text-white font-bold shrink-0 text-xs">
-                            {u.name.charAt(0).toUpperCase()}
+                          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center theme-dark:text-white font-bold shrink-0 text-xs overflow-hidden">
+                            {(u as any).avatarUrl ? (
+                              <img
+                                src={(u as any).avatarUrl}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              u.name.charAt(0).toUpperCase()
+                            )}
                           </div>
                           <div>
                             <div className="text-sm theme-dark:text-white text-gray-900">

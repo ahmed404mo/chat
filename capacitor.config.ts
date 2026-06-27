@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'com.company.platform',
-  appName: 'Company Platform',
+  appName: 'Mentora',
   webDir: 'out',
 
   server: {

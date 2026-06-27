@@ -22,6 +22,29 @@ interface ToastContextType {
 
 const ToastContext = createContext<ToastContextType | null>(null);
 
+const icons = {
+  success: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+      <polyline points="22 4 12 14.01 9 11.01" />
+    </svg>
+  ),
+  error: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="15" y1="9" x2="9" y2="15" />
+      <line x1="9" y1="9" x2="15" y2="15" />
+    </svg>
+  ),
+  info: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  ),
+};
+
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
@@ -44,7 +67,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={{ toasts, addToast, removeToast }}>
       {children}
       <div
-        className="fixed"
+        className="fixed pointer-events-none"
         style={{
           top: 16,
           right: 16,
@@ -55,40 +78,52 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           maxWidth: 360,
         }}
       >
-        {toasts.map((toast) => (
+        {toasts.map((toast, i) => (
           <div
             key={toast.id}
-            className="flex items-center gap-2 px-3 py-2 shadow rounded-lg"
+            className="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] backdrop-blur-2xl border"
             style={{
-              background:
-                toast.type === "success"
-                  ? "#d1fae5"
-                  : toast.type === "error"
-                    ? "#fee2e2"
-                    : "#dbeafe",
-              color:
-                toast.type === "success"
-                  ? "#065f46"
-                  : toast.type === "error"
-                    ? "#991b1b"
-                    : "#1e40af",
-              fontSize: "0.85rem",
-              animation: "slideIn 0.25s ease",
-              border: "1px solid",
-              borderColor:
-                toast.type === "success"
-                  ? "#a7f3d0"
-                  : toast.type === "error"
-                    ? "#fecaca"
-                    : "#bfdbfe",
+              background: `var(--toast-${toast.type}-bg)`,
+              borderColor: `var(--toast-${toast.type}-border)`,
+              animation: `toastSlideIn 0.35s cubic-bezier(0.22, 1, 0.36, 1)`,
+            }}
+            onMouseEnter={() => {
+              const el = document.getElementById(toast.id);
+              if (el) el.style.animationPlayState = "paused";
+            }}
+            onMouseLeave={() => {
+              const el = document.getElementById(toast.id);
+              if (el) el.style.animationPlayState = "running";
             }}
           >
-            <span className="flex-1">{toast.message}</span>
+            <span
+              className="shrink-0 w-8 h-8 rounded-full flex items-center justify-center"
+              style={{
+                background: `var(--toast-${toast.type}-icon-bg)`,
+                color: `var(--toast-${toast.type}-text)`,
+              }}
+            >
+              {icons[toast.type]}
+            </span>
+            <span
+              className="flex-1 text-sm font-medium"
+              style={{ color: `var(--toast-${toast.type}-text)` }}
+            >
+              {toast.message}
+            </span>
             <button
-              className="btn-close"
-              style={{ fontSize: "0.6rem", opacity: 0.5 }}
+              className="shrink-0 w-6 h-6 rounded-full flex items-center justify-center opacity-40 hover:opacity-70 transition-opacity"
+              style={{
+                background: `var(--toast-${toast.type}-icon-bg)`,
+                color: `var(--toast-${toast.type}-text)`,
+              }}
               onClick={() => removeToast(toast.id)}
-            />
+            >
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
           </div>
         ))}
       </div>

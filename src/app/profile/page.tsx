@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/components/ToastProvider";
 import BottomTabBar from "@/components/BottomTabBar";
+import SplashScreen from "@/components/SplashScreen";
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Administrator",
@@ -97,13 +98,7 @@ export default function ProfilePage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-[100dvh] flex items-center justify-center theme-dark:bg-[#09090b] bg-gray-50 relative overflow-hidden">
-        <div className="absolute top-[-10%] ltr:left-[-10%] rtl:right-[-10%] w-96 h-96 bg-blue-600/30 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="absolute bottom-[-10%] ltr:right-[-10%] rtl:left-[-10%] w-96 h-96 bg-purple-600/30 rounded-full blur-[120px] pointer-events-none"></div>
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-r-2 border-blue-500 mb-4 shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
-      </div>
-    );
+    return <SplashScreen message="جاري تحميل الملف الشخصي..." />;
   }
 
   if (!user) return null;
