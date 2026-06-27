@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { createContext, useContext, type ReactNode } from "react";
 
 type Theme = "dark" | "light";
 
@@ -9,46 +9,37 @@ interface ThemeContextType {
   toggleTheme: () => void;
 }
 
-const ThemeContext = createContext<ThemeContextType | null>(null);
+const ThemeContext = createContext<ThemeContextType>({
+  theme: "dark",
+  toggleTheme: () => {},
+});
 
-function setDOMTheme(theme: Theme) {
-  if (theme === "dark") {
-    document.documentElement.classList.add("dark");
-  } else {
-    document.documentElement.classList.remove("dark");
-  }
-}
+// This script runs immediately when the component is rendered on the client,
+// preventing the flash of an incorrect theme.
+const setInitialThemeScript = `
+  (function() {
+    try {
+      document.documentElement.classList.add('dark');
+      document.documentElement.dir = 'rtl';
+      localStorage.removeItem('theme');
+    } catch (e) {
+      console.error('Failed to set initial theme:', e);
+    }
+  })();
+`;
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setTheme] = useState<Theme>("dark");
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    const stored = localStorage.getItem("theme") as Theme | null;
-    const initial = stored === "light" ? "light" : "dark";
-    setTheme(initial);
-    setDOMTheme(initial);
-    setMounted(true);
-  }, []);
-
-  const toggleTheme = useCallback(() => {
-    setTheme((prev) => {
-      const next: Theme = prev === "dark" ? "light" : "dark";
-      localStorage.setItem("theme", next);
-      setDOMTheme(next);
-      return next;
-    });
-  }, []);
+  const theme: Theme = "dark";
+  const toggleTheme = () => {}; // No-op, as theme is fixed.
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      <script dangerouslySetInnerHTML={{ __html: setInitialThemeScript }} />
       {children}
     </ThemeContext.Provider>
   );
 }
 
 export function useTheme() {
-  const ctx = useContext(ThemeContext);
-  if (!ctx) throw new Error("useTheme must be used within ThemeProvider");
-  return ctx;
+  return useContext(ThemeContext);
 }
