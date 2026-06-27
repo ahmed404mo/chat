@@ -18,11 +18,12 @@ export async function POST(req: Request) {
       create: { messageId, userId: user.id, emoji },
       include: { user: { select: { id: true, name: true, role: true } } },
     });
+    const reactionData = { id: reaction.id, emoji: reaction.emoji, userId: reaction.userId, user: reaction.user, createdAt: reaction.createdAt.toISOString() };
 
     try { await pusher.trigger(`private-conversation-${conversationId}`, "message-reaction-added", {
       messageId,
       conversationId,
-      reaction: { id: reaction.id, emoji: reaction.emoji, userId: reaction.userId, user: reaction.user },
+      reaction: reactionData,
     }); } catch (e) { console.error("pusher trigger error:", e); }
 
     return NextResponse.json({ success: true });

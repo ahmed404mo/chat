@@ -27,6 +27,7 @@ export interface Reaction {
   emoji: string;
   userId: string;
   user: { id: string; name: string; role: string };
+  createdAt?: string;
 }
 
 export interface Message {
@@ -372,6 +373,17 @@ export function SocketProvider({ children }: { children: ReactNode }) {
         );
       });
 
+      channel.bind("conversation-deleted", ({ conversationId }: { conversationId: string }) => {
+        setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+        setMessages((prev) => {
+          const { [conversationId]: _, ...rest } = prev;
+          return rest;
+        });
+        if (activeConversationRef.current === conversationId) {
+          setActiveConversation(null);
+        }
+      });
+
       channel.bind("message-reaction-added", ({ messageId, conversationId, reaction }: { messageId: string; conversationId: string; reaction: Reaction }) => {
         setMessages((prev) => {
           const msgs = prev[conversationId];
@@ -487,10 +499,11 @@ export function SocketProvider({ children }: { children: ReactNode }) {
 
   const sendMessage = useCallback((conversationId: string, content: string, repliedToId?: string, files?: any[], repliedToMessage?: Message | null) => {
     const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    const role = userRef.current?.role || "user";
+    const role = userRef.current?.role || "client";
     const optimistic: Message = {
       id: tempId,
       content,
+      status: "sending",
       senderId: userRef.current?.id || "",
       sender: { id: userRef.current?.id || "", name: userRef.current?.name || "", role },
       conversationId,
@@ -523,10 +536,11 @@ export function SocketProvider({ children }: { children: ReactNode }) {
   const sendFileMessage = useCallback(
     (conversationId: string, content: string, attachments: Omit<Attachment, "id" | "createdAt">[]) => {
       const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      const role = userRef.current?.role || "user";
+      const role = userRef.current?.role || "client";
       const optimistic: Message = {
         id: tempId,
         content,
+        status: "sending",
         senderId: userRef.current?.id || "",
         sender: { id: userRef.current?.id || "", name: userRef.current?.name || "", role },
         conversationId,
@@ -716,7 +730,7 @@ export function SocketProvider({ children }: { children: ReactNode }) {
           const filtered = (m.reactions || []).filter((r) => r.userId !== tempUser?.id);
           return {
             ...m,
-            reactions: [...filtered, { id: `temp-${Date.now()}`, emoji, userId: tempUser?.id || "", user: { id: tempUser?.id || "", name: tempUser?.name || "", role: tempUser?.role || "user" } }],
+            reactions: [...filtered, { id: `temp-${Date.now()}`, emoji, userId: tempUser?.id || "", user: { id: tempUser?.id || "", name: tempUser?.name || "", role: tempUser?.role || "client" }, createdAt: new Date().toISOString() }],
           };
         }),
       };

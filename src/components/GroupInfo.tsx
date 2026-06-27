@@ -483,7 +483,7 @@ export default function GroupInfo({ conversation, onClose }: GroupInfoProps) {
                           {p.user.name}
                           {p.userId === conversation.createdById && (
                             <span
-                              className="inline-block rounded-full px-2 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/20 ml-2"
+                              className="inline-block rounded-full px-2 py-0.5 bg-blue-500/20 text-blue-400 border border-blue-500/20 ms-2"
                               style={{ fontSize: "0.55rem", fontWeight: 600 }}
                             >
                               Admin

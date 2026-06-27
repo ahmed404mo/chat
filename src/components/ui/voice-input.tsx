@@ -1,101 +1,102 @@
 "use client";
 
-import React from "react";
-import { Mic } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Mic, Square, Trash2 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 
-import { cn } from "../../lib/utils";
-
 interface VoiceInputProps {
-  onToggleRecording: () => void;
+  onStartRecording: () => void;
+  onStopRecording: () => void;
+  onCancelRecording: () => void;
   isRecording: boolean;
   recordingTime: number;
-  className?: string;
 }
 
 export function VoiceInput({
-  className,
-  onToggleRecording,
+  onStartRecording,
+  onStopRecording,
+  onCancelRecording,
   isRecording,
   recordingTime,
 }: VoiceInputProps) {
+  const [isRtl, setIsRtl] = useState(false);
+
+  useEffect(() => {
+    setIsRtl(document.documentElement.dir === "rtl");
+  }, []);
+
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs
-      .toString()
-      .padStart(2, "0")}`;
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
   };
 
   return (
-    <div className={cn("flex flex-col items-center justify-center", className)}>
-      <motion.div
-        className="flex p-2 border items-center justify-center rounded-full cursor-pointer theme-dark:bg-[#233138] bg-white theme-dark:border-white/[0.06] border-gray-100"
-        layout
-        transition={{
-          layout: {
-            duration: 0.4,
-          },
-        }}
-        onClick={onToggleRecording}
-      >
-        <div className="h-6 w-6 items-center justify-center flex ">
-          {isRecording ? (
-            <motion.div
-              className="w-4 h-4 bg-red-500 rounded-sm"
-              animate={{
-                rotate: [0, 180, 360],
+    <div className="relative flex items-center justify-center w-full h-full">
+      {/* 
+        شريط التسجيل العائم
+        يظهر بجوار الزر ليعرض الوقت وزر الإلغاء بدون أن يكسر التصميم
+      */}
+      <AnimatePresence>
+        {isRecording && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, x: isRtl ? -10 : 10 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            exit={{ opacity: 0, scale: 0.9, x: isRtl ? -10 : 10 }}
+            transition={{ type: "spring", stiffness: 300, damping: 25 }}
+            className="absolute flex items-center gap-3 bg-red-500/10 backdrop-blur-md border border-red-500/20 px-3 py-1.5 rounded-full shadow-sm pointer-events-auto"
+            style={{
+              [isRtl ? "left" : "right"]: "100%",
+              [isRtl ? "marginLeft" : "marginRight"]: "12px",
+            }}
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCancelRecording();
               }}
-              transition={{
-                duration: 2,
-                repeat: Number.POSITIVE_INFINITY,
-                ease: "easeInOut",
-              }}
-            />
-          ) : (
-            <Mic className="theme-dark:text-gray-400 text-gray-500" />
-          )}
-        </div>
-        <AnimatePresence mode="wait">
-          {isRecording && (
-            <motion.div
-              initial={{ opacity: 0, width: 0, marginLeft: 0 }}
-              animate={{ opacity: 1, width: "auto", marginLeft: 8 }}
-              exit={{ opacity: 0, width: 0, marginLeft: 0 }}
-              transition={{
-                duration: 0.4,
-              }}
-              className="overflow-hidden flex gap-2 items-center justify-center"
+              className="flex items-center justify-center w-7 h-7 rounded-full bg-red-500/10 text-red-500 hover:bg-red-500 hover:text-white transition-colors"
+              title="إلغاء التسجيل"
+              aria-label="Cancel recording"
             >
-              {/* Frequency Animation */}
-              <div className="flex gap-0.5 items-center justify-center">
-                {[...Array(12)].map((_, i) => (
-                  <motion.div
-                    key={i}
-                    className="w-0.5 bg-red-500 rounded-full"
-                    initial={{ height: 2 }}
-                    animate={{
-                      height: isRecording
-                        ? [2, 3 + Math.random() * 10, 3 + Math.random() * 5, 2]
-                        : 2,
-                    }}
-                    transition={{
-                      duration: isRecording ? 1 : 0.3,
-                      repeat: isRecording ? Infinity : 0,
-                      delay: isRecording ? i * 0.05 : 0,
-                      ease: "easeInOut",
-                    }}
-                  />
-                ))}
-              </div>
-              {/* Timer */}
-              <div className="text-xs text-red-400 w-10 text-center tabular-nums">
+              <Trash2 size={14} />
+            </button>
+
+            <div className="w-[1px] h-4 bg-red-500/20" />
+
+            <div className="flex items-center gap-1.5 min-w-[45px] justify-center">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              <span className="text-xs font-semibold text-red-500 tabular-nums">
                 {formatTime(recordingTime)}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+              </span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 
+        الزر الرئيسي
+        يتغير شكله بين الميكروفون (للبدء) ومربع الإيقاف (للإنهاء)
+      */}
+      <motion.button
+        type="button"
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={isRecording ? onStopRecording : onStartRecording}
+        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+          isRecording
+            ? "bg-red-50 text-red-500 hover:bg-red-100 border border-red-200 shadow-sm"
+            : "bg-transparent text-[var(--color-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-active)]"
+        }`}
+        aria-label={isRecording ? "Stop recording" : "Start recording"}
+      >
+        {isRecording ? (
+          <Square size={16} fill="currentColor" className="animate-pulse" />
+        ) : (
+          <Mic size={20} />
+        )}
+      </motion.button>
     </div>
   );
 }

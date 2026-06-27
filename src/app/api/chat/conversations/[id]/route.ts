@@ -128,6 +128,8 @@ export async function DELETE(
     // Delete the conversation (cascade handles messages, participants, inviteCodes, attachments)
     await prisma.conversation.delete({ where: { id } });
 
+    try { await pusher.trigger(`private-conversation-${id}`, "conversation-deleted", { conversationId: id }); } catch (e) { console.error("pusher trigger error:", e); }
+
     return NextResponse.json({ message: "Group deleted successfully" });
   } catch (err) {
     console.error("Delete conversation error:", err);

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams, usePathname } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { motion, AnimatePresence } from "framer-motion";
 import SplashScreen from "@/components/SplashScreen";
+import AuroraBackground from "@/components/reactbits/AuroraBackground";
 
 function JoinContent() {
   const searchParams = useSearchParams();
@@ -23,13 +25,11 @@ function JoinContent() {
       if (!user) return;
 
       const isManager = user.role === "admin" || user.role === "hr";
-      // لو كان أدمن أو HR يروح للشات مباشرة
       if (isManager) {
         router.push("/chat");
         return;
       }
 
-      // لو يوزر عادي أو موظف، ومفيش كود دعوة في الرابط، هنفحص جروباته
       const urlCode = searchParams.get("code");
       if (!urlCode) {
         setCheckingChats(true);
@@ -41,11 +41,9 @@ function JoinContent() {
 
           if (!isMounted) return;
 
-          // لو رجع بجروبات، هنحوله للشات فوراً
           if (data.conversations && data.conversations.length > 0) {
             router.push("/chat");
           } else {
-            // لو معندوش جروبات، يفضل هنا عشان يكتب الكود
             setCheckingChats(false);
           }
         } catch (err) {
@@ -72,7 +70,6 @@ function JoinContent() {
   }, [user, loading, router, searchParams]);
 
   useEffect(() => {
-    // Auto-join if code is in URL and user is logged in
     if (searchParams.get("code") && user && status === "idle") {
       handleJoin();
     }
@@ -80,7 +77,6 @@ function JoinContent() {
 
   const handleJoin = async () => {
     if (!code.trim()) {
-      // This case should ideally not be hit if button is disabled
       return;
     }
 
@@ -115,7 +111,6 @@ function JoinContent() {
     }
   };
 
-  // إظهار شاشة التحميل في حالة تسجيل الدخول أو أثناء فحص الجروبات
   if (loading || checkingChats || (user && status === "idle")) {
     return <SplashScreen message="جاري التحميل..." />;
   }
@@ -123,104 +118,189 @@ function JoinContent() {
   if (!user) return null;
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center theme-dark:bg-[#09090b] bg-[#f8fafc] relative overflow-hidden px-4">
-      <div className="absolute top-[-20%] ltr:left-[-10%] rtl:right-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[150px] pointer-events-none -z-10"></div>
-      <div className="absolute bottom-[-20%] ltr:right-[-10%] rtl:left-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[150px] pointer-events-none -z-10"></div>
+    <div
+      className="min-h-[100dvh] flex items-center justify-center relative overflow-hidden px-4"
+      style={{ background: "var(--color-bg)" }}
+    >
+      <AuroraBackground color="#7C5CFF" speed={0.12} />
+      <div className="noise-overlay" />
 
-      <div className="w-full max-w-md theme-dark:bg-white/5 bg-white/80 backdrop-blur-2xl border theme-dark:border-white/10 border-gray-200 rounded-[1.5rem] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] p-8 text-center animate-fade-in-up">
-        {status === "no_code" || status === "error" ? (
-          <>
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 theme-dark:border-white/10 border-gray-200 flex items-center justify-center mx-auto mb-4">
-              <svg
-                width="36"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                className="theme-dark:text-gray-400 text-gray-500"
-              >
-                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72" />
-                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72" />
-              </svg>
-            </div>
-            <h4 className="font-bold mb-2 theme-dark:text-white text-gray-900">
-              Invitation Required
-            </h4>
-            <p className="theme-dark:text-gray-400 text-gray-500 text-sm mb-6">
-              To join a conversation, you need an invitation link from your
-              manager.
-            </p>
-
-            {status === "error" && (
-              <div className="mb-4 p-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl">
-                {message}
-              </div>
-            )}
-
-            <div className="mb-4 text-left">
-              <label className="block text-xs font-semibold theme-dark:text-gray-400 text-gray-500 uppercase tracking-wider mb-1.5 px-1">
-                Or enter code manually
-              </label>
-              <input
-                type="text"
-                className="w-full px-4 py-3 text-center font-mono text-lg theme-dark:bg-white/5 bg-gray-100 border theme-dark:border-white/10 border-gray-200 rounded-xl theme-dark:text-white text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-500/50 focus:theme-dark:bg-white/10 focus:bg-white focus:ring-4 focus:ring-blue-500/10 transition-all"
-                placeholder="Enter code"
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                style={{ letterSpacing: "0.15em" }}
-                maxLength={8}
-              />
-            </div>
-            <button
-              className="w-full py-2.5 font-semibold text-white bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl hover:from-blue-500 hover:to-purple-500 transition-all shadow-[0_0_20px_rgba(99,102,241,0.3)] disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
-              onClick={handleJoin}
-              disabled={!code.trim()}
-            >
-              Join Chat
-            </button>
-          </>
-        ) : status === "success" ? (
-          <>
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-green-500/20 to-emerald-500/20 border border-green-500/20 flex items-center justify-center mx-auto mb-4">
-              <svg
-                width="32"
-                height="32"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="text-green-400"
-              >
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-                <polyline points="22 4 12 14.01 9 11.01" />
-              </svg>
-            </div>
-            <h4 className="font-bold mb-2 text-green-400">Welcome!</h4>
-            <p className="theme-dark:text-gray-300 text-gray-600 text-sm mb-0">
-              {message}
-            </p>
-            <p className="text-sm theme-dark:text-gray-500 text-gray-400 mt-1">
-              Redirecting to chat...
-            </p>
-          </>
-        ) : (
-          // Joining state
-          <div className="flex flex-col items-center">
-            <div className="w-16 h-16 rounded-[1.25rem] bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.3)] mb-4">
-              <svg className="animate-spin w-8 h-8 text-white" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            </div>
-            <p className="theme-dark:text-gray-400 text-gray-500 text-sm">
-              Joining conversation, please wait...
-            </p>
-          </div>
-        )}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 ltr:-end-40 rtl:-start-40 w-80 h-80 rounded-full opacity-[0.04]"
+          style={{ background: "var(--color-primary)", filter: "blur(80px)" }} />
+        <div className="absolute -bottom-40 ltr:-start-40 rtl:-end-40 w-80 h-80 rounded-full opacity-[0.03]"
+          style={{ background: "var(--color-accent)", filter: "blur(80px)" }} />
       </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 24, scale: 0.97 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+        className="w-full sm:max-w-md relative z-10 sm:px-0"
+      >
+        <div
+          className="sm:rounded-[28px] border-0 sm:border shadow-2xl overflow-hidden text-center sm:min-h-0 sm:h-auto"
+          style={{
+            background: "rgba(21, 26, 35, 0.75)",
+            backdropFilter: "blur(24px)",
+            WebkitBackdropFilter: "blur(24px)",
+            borderColor: "rgba(124, 92, 255, 0.12)",
+            boxShadow: "0 24px 80px rgba(0,0,0,0.45), 0 0 0 1px rgba(124,92,255,0.06) inset",
+            minHeight: "100dvh",
+            height: "100%",
+          }}
+        >
+          <div className="hidden sm:block h-[3px] w-full relative overflow-hidden">
+            <div className="absolute inset-0"
+              style={{
+                background: "linear-gradient(90deg, var(--color-primary), var(--color-secondary), var(--color-accent), var(--color-primary))",
+                backgroundSize: "300% 100%",
+                animation: "gradient-shift 4s ease infinite",
+              }}
+            />
+            <style>{`@keyframes gradient-shift { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }`}</style>
+          </div>
+
+          <div className="flex flex-col justify-center min-h-[100dvh] sm:min-h-0 px-5 sm:px-10 py-8">
+            <AnimatePresence mode="wait">
+              {status === "no_code" || status === "error" ? (
+                <motion.div
+                  key="input"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -12 }}
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.15 }}
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4"
+                    style={{
+                      background: "linear-gradient(135deg, var(--color-primary), var(--color-secondary))",
+                      boxShadow: "0 8px 24px rgba(124, 92, 255, 0.25)",
+                    }}
+                  >
+                    <svg width="36" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.72" />
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.72-1.72" />
+                    </svg>
+                  </motion.div>
+                  <h4 className="text-lg sm:text-xl font-bold mb-2" style={{ color: "var(--color-text)" }}>
+                    Invitation Required
+                  </h4>
+                  <p className="text-sm sm:text-base mb-6" style={{ color: "var(--color-muted)" }}>
+                    To join a conversation, you need an invitation link from your manager.
+                  </p>
+
+                  <AnimatePresence>
+                    {status === "error" && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -4 }}
+                        className="mb-4 p-3 text-sm rounded-xl"
+                        style={{
+                          color: "var(--color-danger)",
+                          background: "rgba(239, 68, 68, 0.08)",
+                          border: "1px solid rgba(239, 68, 68, 0.15)",
+                        }}
+                      >
+                        {message}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <div className="mb-4 text-start">
+                    <label className="block text-xs font-semibold mb-1.5 px-1 uppercase tracking-wider" style={{ color: "var(--color-muted)" }}>
+                      Or enter code manually
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full px-4 py-3.5 sm:py-3 text-center font-mono text-xl sm:text-lg rounded-xl outline-none transition-all duration-200"
+                      style={{
+                        background: "var(--color-input)",
+                        border: "1px solid var(--color-border)",
+                        color: "var(--color-text)",
+                        letterSpacing: "0.15em",
+                      }}
+                      placeholder="Enter code"
+                      value={code}
+                      onChange={(e) => setCode(e.target.value.toUpperCase())}
+                      maxLength={8}
+                    />
+                  </div>
+                  <button
+                    className="w-full py-3.5 sm:py-2.5 font-semibold text-white rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                    style={{
+                      background: "linear-gradient(135deg, var(--color-primary), var(--color-secondary))",
+                      boxShadow: "0 4px 16px rgba(124, 92, 255, 0.25)",
+                    }}
+                    onClick={handleJoin}
+                    disabled={!code.trim()}
+                  >
+                    Join Chat
+                  </button>
+                </motion.div>
+              ) : status === "success" ? (
+                <motion.div
+                  key="success"
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  className="flex flex-col items-center py-8"
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+                    style={{ background: "rgba(34, 197, 94, 0.15)" }}
+                  >
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                      <polyline points="22 4 12 14.01 9 11.01" />
+                    </svg>
+                  </motion.div>
+                  <h4 className="text-lg sm:text-xl font-bold mb-2" style={{ color: "#22c55e" }}>Welcome!</h4>
+                  <p className="text-sm sm:text-base mb-0" style={{ color: "var(--color-text)" }}>
+                    {message}
+                  </p>
+                  <p className="text-sm sm:text-base mt-1" style={{ color: "var(--color-muted)" }}>
+                    Redirecting to chat...
+                  </p>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="joining"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex flex-col items-center py-8"
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                    className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4"
+                    style={{
+                      background: "linear-gradient(135deg, var(--color-primary), var(--color-secondary))",
+                      boxShadow: "0 8px 24px rgba(124, 92, 255, 0.25)",
+                    }}
+                  >
+                    <svg className="animate-spin w-8 h-8 text-white" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  </motion.div>
+                  <p className="text-sm sm:text-base" style={{ color: "var(--color-muted)" }}>
+                    Joining conversation, please wait...
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </motion.div>
     </div>
   );
 }

@@ -9,18 +9,22 @@ import ChatSidebar from "@/components/ChatSidebar";
 import ChatWindow from "@/components/ChatWindow";
 import BottomTabBar from "@/components/BottomTabBar";
 import SplashScreen from "@/components/SplashScreen";
+import AuroraBackground from "@/components/reactbits/AuroraBackground";
 
 function ChatPageInner() {
   const { user, loading } = useAuth();
-  const { activeConversation, setActiveConversation } = useChat(); 
+  const { activeConversation, setActiveConversation } = useChat();
   const router = useRouter();
   const synced = useRef(false);
   const [isRtl, setIsRtl] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
   useEffect(() => {
     setIsRtl(document.documentElement.dir === "rtl");
+    setMounted(true);
   }, []);
 
-  // Read URL ?active= param on mount and set active conversation
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -31,7 +35,6 @@ function ChatPageInner() {
     }
   }, [setActiveConversation]);
 
-  // Sync activeConversation state → URL (without scroll)
   useEffect(() => {
     if (synced.current && typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -61,22 +64,32 @@ function ChatPageInner() {
   if (!user) return null;
 
   return (
-    <div className="min-h-[100dvh] w-full theme-dark:bg-[#09090b] bg-[#f8fafc] flex items-center justify-center relative overflow-hidden sm:p-4 lg:p-8 font-sans theme-dark:text-white text-gray-900">
-      <div className="absolute top-[-20%] ltr:left-[-10%] rtl:right-[-10%] w-[500px] h-[500px] theme-dark:bg-blue-600/20 bg-blue-400/20 rounded-full blur-[150px] pointer-events-none"></div>
-      {/* <div className=""></div> */}
+    <div className="min-h-[100dvh] w-full bg-[var(--color-bg)] flex items-center justify-center relative overflow-hidden sm:p-4 lg:p-6 font-sans text-[var(--color-text)]">
+      {mounted && <AuroraBackground color="#7C5CFF" speed={0.2} />}
 
-      <div className="w-full max-w-[1600px] h-[100dvh] sm:h-[calc(100vh-2rem)] lg:h-[calc(100vh-4rem)] theme-dark:bg-white/5 bg-white/70 backdrop-blur-2xl sm:border theme-dark:border-white/10 border-gray-200 sm:rounded-[2.5rem] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] flex flex-col overflow-hidden z-10 relative">
-        <div className="flex-1 flex overflow-hidden min-h-0">
-          {/* Mobile view: animated switch */}
+      <div className="noise-overlay" />
+
+      <div
+        className="w-full max-w-[1640px] h-[100dvh] sm:h-[calc(100vh-2rem)] lg:h-[calc(100vh-3rem)] sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden z-10 relative"
+        style={{
+          background: "var(--color-surface)",
+          border: "1px solid var(--color-border)",
+        }}
+      >
+        <div
+          className="flex-1 flex overflow-hidden min-h-0 ltr:flex-row rtl:flex-row-reverse"
+          style={{ direction: "ltr" }}
+        >
+          {/* Mobile view */}
           <div className="flex sm:hidden w-full relative overflow-hidden">
             <AnimatePresence mode="wait">
               {!activeConversation ? (
                 <motion.div
                   key="sidebar"
-                  initial={{ opacity: 0, x: isRtl ? 30 : -30 }}
+                  initial={{ opacity: 0, x: isRtl ? 20 : -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: isRtl ? 30 : -30 }}
-                  transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                  exit={{ opacity: 0, x: isRtl ? -20 : 20 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                   className="w-full shrink-0"
                 >
                   <ChatSidebar />
@@ -84,28 +97,47 @@ function ChatPageInner() {
               ) : (
                 <motion.div
                   key="chat"
-                  initial={{ opacity: 0, x: isRtl ? -40 : 40 }}
+                  initial={{ opacity: 0, x: isRtl ? -30 : 30 }}
                   animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: isRtl ? -40 : 40 }}
-                  transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                  exit={{ opacity: 0, x: isRtl ? 30 : -30 }}
+                  transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                   className="w-full shrink-0"
                 >
-                  <ChatWindow />
+                  <ChatWindow onToggleSidebar={() => setActiveConversation(null)} />
                 </motion.div>
               )}
             </AnimatePresence>
           </div>
 
-          {/* Desktop view: side by side */}
-          <aside className="hidden sm:flex sm:w-[380px] md:w-[420px] flex-shrink-0 ltr:sm:border-l rtl:sm:border-r theme-dark:border-white/10 border-gray-200 theme-dark:bg-black/20 bg-white/50 flex-col overflow-hidden">
-            <ChatSidebar />
-          </aside>
+          {/* Desktop sidebar */}
+          <motion.aside
+            animate={{
+              width: sidebarCollapsed ? 72 : 380,
+              minWidth: sidebarCollapsed ? 72 : 380,
+            }}
+            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+            className="hidden sm:flex flex-col overflow-hidden border-r border-[var(--color-border)]"
+            style={{ background: "var(--color-sidebar)" }}
+          >
+            <ChatSidebar
+              collapsed={sidebarCollapsed}
+              onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+            />
+          </motion.aside>
 
-          <main className="hidden sm:flex flex-1 flex-col bg-transparent overflow-hidden">
-            <ChatWindow />
+          {/* Desktop chat window */}
+          <main className="hidden sm:flex flex-1 flex-col overflow-hidden" style={{ background: "var(--color-bg)" }}>
+            <ChatWindow onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
           </main>
         </div>
-        <div className={activeConversation ? "sm:block hidden" : ""}>
+
+        <div
+          className={`${activeConversation ? "sm:block hidden" : ""} pb-[env(safe-area-inset-bottom,0px)]`}
+          style={{
+            borderTop: "1px solid var(--color-border)",
+            background: "var(--color-sidebar)",
+          }}
+        >
           <BottomTabBar />
         </div>
       </div>
