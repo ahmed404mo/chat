@@ -47,15 +47,12 @@ jobs:
 
       - name: Set minSdkVersion to 23 (required by record_android)
         run: |
-          # Try app build.gradle (hardcoded version)
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' /tmp/mentora_build/android/app/build.gradle
           sed -i 's/minSdkVersion 21/minSdkVersion 23/' /tmp/mentora_build/android/app/build.gradle
-          # Try root build.gradle (flutter.minSdkVersion variable)
-          sed -i 's/minSdkVersion = 21/minSdkVersion = 23/' /tmp/mentora_build/android/build.gradle
-          sed -i 's/minSdkVersion 21/minSdkVersion 23/' /tmp/mentora_build/android/build.gradle
-          # Also try in settings.gradle
-          sed -i 's/minSdkVersion 21/minSdkVersion 23/' /tmp/mentora_build/android/settings.gradle 2>/dev/null || true
-          grep -n 'minSdk' /tmp/mentora_build/android/app/build.gradle /tmp/mentora_build/android/build.gradle /tmp/mentora_build/android/settings.gradle 2>/dev/null || echo "No minSdk found"
-          echo "minSdkVersion set to 23"
+          sed -i 's/minSdkVersion 21/minSdkVersion 23/' /tmp/mentora_build/android/build.gradle 2>/dev/null || true
+          echo "=== Checking minSdkVersion ==="
+          grep -n 'minSdk' /tmp/mentora_build/android/app/build.gradle /tmp/mentora_build/android/build.gradle 2>/dev/null || echo "No minSdk found"
+          echo "=== Done ==="
 
       - name: Copy our app code
         run: |
