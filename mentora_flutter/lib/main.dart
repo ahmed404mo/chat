@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'config/theme.dart';
 import 'l10n/app_localizations.dart';
 import 'providers/auth_provider.dart';
@@ -10,8 +11,11 @@ import 'screens/auth/auth_screen.dart';
 import 'screens/chat/main_shell.dart';
 import 'screens/splash_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp();
+  } catch (_) {}
   runApp(const MentoraApp());
 }
 

@@ -24,7 +24,9 @@ class AuthProvider extends ChangeNotifier {
       if (loggedIn) {
         _user = await _authService.getCurrentUser();
         _status = AuthStatus.authenticated;
-        await _pusherService.connect(_user!.id);
+        try {
+          await _pusherService.connect(_user!.id);
+        } catch (_) {}
       } else {
         _status = AuthStatus.unauthenticated;
       }

@@ -21,17 +21,24 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initApp() async {
-    final auth = context.read<AuthProvider>();
-    await auth.initialize();
+    try {
+      final auth = context.read<AuthProvider>();
+      await auth.initialize();
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (auth.isAuthenticated) {
-      context.read<ChatProvider>().setCurrentUserId(auth.user!.id);
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainShell()),
-      );
-    } else {
+      if (auth.isAuthenticated) {
+        context.read<ChatProvider>().setCurrentUserId(auth.user!.id);
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const MainShell()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const AuthScreen()),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const AuthScreen()),
       );
