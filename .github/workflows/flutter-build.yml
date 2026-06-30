@@ -43,11 +43,21 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Configure Flutter Android SDK
+        run: |
+          flutter config --android-sdk $ANDROID_HOME
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+
+      - name: Generate local.properties
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+          echo "flutter.sdk=$FLUTTER_ROOT" >> android/local.properties
+
       - name: Flutter pub get
         run: flutter pub get
 
       - name: Build APK
-        run: flutter build apk --${{ github.event.inputs.build-type || 'debug' }}
+        run: flutter build apk --${{ github.event.inputs.build-type || 'debug' }} --no-tree-shake-icons
 
       - name: Rename APK
         run: |
