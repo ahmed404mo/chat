@@ -45,17 +45,6 @@ jobs:
           flutter create --org com.company --project-name mentora mentora_build
           echo "Flutter project created"
 
-      - name: Set minSdkVersion to 23 (required by record_android)
-        run: |
-          # Fix build.gradle (app-level)
-          sed -i 's/minSdkVersion [0-9]\+/minSdkVersion 23/' /tmp/mentora_build/android/app/build.gradle
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/' /tmp/mentora_build/android/app/build.gradle
-          # Fix AndroidManifest files that hardcode minSdkVersion 21
-          find /tmp/mentora_build/android -name 'AndroidManifest.xml' -exec sed -i 's/minSdkVersion="[0-9]\+"/minSdkVersion="23"/g' {} +
-          echo "=== Checking ==="
-          grep -rn 'minSdk' /tmp/mentora_build/android/ 2>/dev/null | head -10
-          echo "=== Done ==="
-
       - name: Copy our app code
         run: |
           rm -rf /tmp/mentora_build/lib/*
@@ -65,6 +54,11 @@ jobs:
           cp -r mentora_flutter/l10n.yaml /tmp/mentora_build/ 2>/dev/null || true
           cp -r mentora_flutter/l10n /tmp/mentora_build/ 2>/dev/null || true
           cp mentora_flutter/android/app/google-services.json /tmp/mentora_build/android/app/google-services.json 2>/dev/null || true
+          cp mentora_flutter/android/app/build.gradle /tmp/mentora_build/android/app/build.gradle
+          sed -i 's/minSdkVersion="[0-9]*"/minSdkVersion="23"/' /tmp/mentora_build/android/app/src/debug/AndroidManifest.xml 2>/dev/null || true
+          echo "=== Verifying ==="
+          grep -n 'minSdk' /tmp/mentora_build/android/app/build.gradle
+          grep -n 'minSdkVersion' /tmp/mentora_build/android/app/src/debug/AndroidManifest.xml 2>/dev/null || echo "No debug manifest"
           echo "Code copied"
 
       - name: Flutter pub get
