@@ -116,7 +116,7 @@ export async function POST(req: Request) {
           include: { sender: { select: { id: true, name: true, role: true } } },
         },
         inviteCodes: {
-          select: { id: true, code: true, expiresAt: true, maxUses: true, usedCount: true, isActive: true },
+        select: { id: true, code: true, conversationId: true, expiresAt: true, maxUses: true, usedCount: true, isActive: true },
         },
       },
     });

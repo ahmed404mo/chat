@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/theme_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../../services/user_service.dart';
 import '../auth/auth_screen.dart';
@@ -179,21 +178,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   },
                 ),
                 const Divider(height: 1, indent: 56),
-                Consumer<ThemeProvider>(
-                  builder: (context, theme, _) {
-                    return _buildSettingItem(
-                      context,
-                      icon: Icons.dark_mode,
-                      title: 'الوضع الداكن',
-                      subtitle: theme.isDark ? 'مفعل' : 'معطل',
-                      trailing: Switch(
-                        value: theme.isDark,
-                        onChanged: (_) => theme.toggle(),
-                        activeColor: AppTheme.primaryColor,
-                      ),
-                      onTap: () => theme.toggle(),
-                    );
-                  },
+                _buildSettingItem(
+                  context,
+                  icon: Icons.dark_mode,
+                  title: 'الوضع الداكن',
+                  subtitle: 'مفعل',
+                  onTap: () {},
                 ),
 
                 const SizedBox(height: 32),

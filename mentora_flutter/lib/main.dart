@@ -5,7 +5,6 @@ import 'config/theme.dart';
 import 'l10n/app_localizations.dart';
 import 'providers/auth_provider.dart';
 import 'providers/chat_provider.dart';
-import 'providers/theme_provider.dart';
 import 'providers/settings_provider.dart';
 import 'screens/auth/auth_screen.dart';
 import 'screens/chat/main_shell.dart';
@@ -25,39 +24,34 @@ class MentoraApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => SettingsProvider()),
       ],
-      child: Consumer<ThemeProvider>(
-        builder: (context, themeProvider, _) {
-          return MaterialApp(
-            title: 'Mentora',
-            debugShowCheckedModeBanner: false,
-            theme: themeProvider.isDark ? AppTheme.darkTheme : AppTheme.lightTheme,
-            locale: const Locale('ar'),
-            supportedLocales: const [
-              Locale('ar'),
-              Locale('en'),
-            ],
-            localizationsDelegates: const [
-              AppLocalizations.delegate,
-              GlobalMaterialLocalizations.delegate,
-              GlobalWidgetsLocalizations.delegate,
-              GlobalCupertinoLocalizations.delegate,
-            ],
-            localeResolutionCallback: (locale, supportedLocales) {
-              if (locale != null) {
-                for (final supported in supportedLocales) {
-                  if (supported.languageCode == locale.languageCode) {
-                    return supported;
-                  }
-                }
+      child: MaterialApp(
+        title: 'Mentora',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.darkTheme,
+        locale: const Locale('ar'),
+        supportedLocales: const [
+          Locale('ar'),
+          Locale('en'),
+        ],
+        localizationsDelegates: const [
+          AppLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
+        localeResolutionCallback: (locale, supportedLocales) {
+          if (locale != null) {
+            for (final supported in supportedLocales) {
+              if (supported.languageCode == locale.languageCode) {
+                return supported;
               }
-              return const Locale('ar');
-            },
-            home: const SplashScreen(),
-          );
+            }
+          }
+          return const Locale('ar');
         },
+        home: const SplashScreen(),
       ),
     );
   }

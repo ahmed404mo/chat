@@ -33,7 +33,7 @@ class Conversation {
       title: json['title'] as String?,
       imageUrl: json['imageUrl'] as String?,
       isGroup: json['isGroup'] as bool? ?? false,
-      createdBy: json['createdBy'] as String? ?? '',
+      createdBy: (json['createdBy'] ?? json['createdById']) as String? ?? '',
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
       lastMessage: json['lastMessage'] != null
@@ -133,7 +133,7 @@ class InviteCode {
     return InviteCode(
       id: json['id'] as String,
       code: json['code'] as String,
-      conversationId: json['conversationId'] as String,
+      conversationId: json['conversationId'] as String? ?? '',
       createdBy: json['createdBy'] as String? ?? '',
       expiresAt: json['expiresAt'] != null
           ? DateTime.parse(json['expiresAt'] as String)

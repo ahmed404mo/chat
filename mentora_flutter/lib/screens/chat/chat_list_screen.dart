@@ -28,15 +28,19 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final auth = context.watch<AuthProvider>();
+    final canCreate = auth.user?.canManageConversations ?? false;
+
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
         title: const Text('المحادثات'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_circle_outline),
-            onPressed: () => _showCreateOptions(context),
-          ),
+          if (canCreate)
+            IconButton(
+              icon: const Icon(Icons.add_circle_outline),
+              onPressed: () => _showCreateOptions(context),
+            ),
         ],
       ),
       body: Consumer<ChatProvider>(
@@ -151,6 +155,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
   }
 
   Widget _buildEmpty() {
+    final auth = context.watch<AuthProvider>();
+    final canCreate = auth.user?.canManageConversations ?? false;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
@@ -180,21 +187,22 @@ class _ChatListScreenState extends State<ChatListScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'ابدأ محادثة جديدة أو انضم باستخدام رمز دعوة',
-              style: TextStyle(
+            Text(
+              canCreate ? 'ابدأ محادثة جديدة أو انضم باستخدام رمز دعوة' : 'انضم باستخدام رمز دعوة',
+              style: const TextStyle(
                 fontSize: 14,
                 color: AppTheme.textSecondary,
               ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: () => _showCreateOptions(context),
-              icon: const Icon(Icons.add),
-              label: const Text('محادثة جديدة'),
-            ),
-            const SizedBox(height: 12),
+            if (canCreate)
+              ElevatedButton.icon(
+                onPressed: () => _showCreateOptions(context),
+                icon: const Icon(Icons.add),
+                label: const Text('محادثة جديدة'),
+              ),
+            if (canCreate) const SizedBox(height: 12),
             TextButton.icon(
               onPressed: () => _showJoinModal(context),
               icon: const Icon(Icons.login),
