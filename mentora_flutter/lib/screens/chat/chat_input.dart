@@ -1,7 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:record/record.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../config/theme.dart';
 import '../../providers/chat_provider.dart';
@@ -25,14 +25,11 @@ class _ChatInputState extends State<ChatInput> {
   String? _selectedFileName;
   Timer? _typingTimer;
 
-  final _audioRecorder = AudioRecorder();
-
   @override
   void dispose() {
     _textController.dispose();
     _focusNode.dispose();
     _typingTimer?.cancel();
-    _audioRecorder.dispose();
     super.dispose();
   }
 
@@ -87,28 +84,15 @@ class _ChatInputState extends State<ChatInput> {
   }
 
   Future<void> _toggleRecording() async {
-    if (_isRecording) {
-      final path = await _audioRecorder.stop();
-      setState(() => _isRecording = false);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.audio,
+    );
 
-      if (path != null) {
-        setState(() {
-          _selectedFilePath = path;
-          _selectedFileName = 'تسجيل صوتي';
-        });
-      }
-    } else {
-      final hasPermission = await _audioRecorder.hasPermission();
-      if (!hasPermission) return;
-
-      await _audioRecorder.start(
-        const RecordConfig(
-          encoder: AudioEncoder.aacLc,
-          bitRate: 128000,
-          sampleRate: 44100,
-        ),
-      );
-      setState(() => _isRecording = true);
+    if (result != null && result.files.single.path != null) {
+      setState(() {
+        _selectedFilePath = result.files.single.path;
+        _selectedFileName = 'تسجيل صوتي';
+      });
     }
   }
 
