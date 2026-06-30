@@ -1,0 +1,60 @@
+name: Build Flutter APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      build-type:
+        description: 'Build type'
+        required: true
+        default: 'debug'
+        type: choice
+        options:
+          - debug
+          - release
+  push:
+    branches: [main]
+    paths:
+      - 'mentora_flutter/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: mentora_flutter
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.27.4'
+          channel: 'stable'
+          cache: true
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build APK
+        run: flutter build apk --${{ github.event.inputs.build-type || 'debug' }}
+
+      - name: Rename APK
+        run: |
+          TIMESTAMP=$(date -u '+%Y%m%d_%H%M%S')
+          cp build/app/outputs/flutter-apk/app-${{ github.event.inputs.build-type || 'debug' }}.apk \
+             build/app/outputs/flutter-apk/mentora-flutter-${{ github.event.inputs.build-type || 'debug' }}-$TIMESTAMP.apk
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: mentora-flutter-apk
+          path: mentora_flutter/build/app/outputs/flutter-apk/mentora-flutter-*.apk
+          if-no-files-found: error

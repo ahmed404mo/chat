@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "547570855809",
+    "project_id": "notifaction-4a435",
+    "storage_bucket": "notifaction-4a435.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:547570855809:android:01e28b7edd9b1d1e2d8280",
+        "android_client_info": {
+          "package_name": "com.company.platform"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCfsVZvwtgOz-BIN9XkZTaPXoUJzSnrq3E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
