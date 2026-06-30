@@ -3,8 +3,12 @@ name: Build Android APK
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'mentora_flutter/**'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - 'mentora_flutter/**'
   workflow_dispatch:
 
 jobs:
