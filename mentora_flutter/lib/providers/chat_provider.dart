@@ -108,9 +108,9 @@ class ChatProvider extends ChangeNotifier {
 
   void _updateReactionInMessages(Map<String, dynamic> data) {
     final messageId = data['messageId'] as String?;
-    if (messageId == null) return;
-    // Reload reactions for this message
-    _chatService.getMessages(_activeConversationId!).then((msgs) {
+    final conversationId = _activeConversationId;
+    if (messageId == null || conversationId == null) return;
+    _chatService.getMessages(conversationId).then((msgs) {
       final updated = msgs.where((m) => m.id == messageId).firstOrNull;
       if (updated != null) {
         final idx = _messages.indexWhere((m) => m.id == messageId);
@@ -266,6 +266,15 @@ class ChatProvider extends ChangeNotifier {
   Future<void> editMessage(String messageId, String content) async {
     try {
       await _chatService.editMessage(messageId, content);
+      final idx = _messages.indexWhere((m) => m.id == messageId);
+      if (idx != -1) {
+        _messages[idx] = _messages[idx].copyWith(
+          content: content,
+          isEdited: true,
+          updatedAt: DateTime.now(),
+        );
+      }
+      notifyListeners();
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -275,6 +284,8 @@ class ChatProvider extends ChangeNotifier {
   Future<void> deleteMessage(String messageId, {bool forEveryone = false}) async {
     try {
       await _chatService.deleteMessage(messageId, forEveryone: forEveryone);
+      _messages.removeWhere((m) => m.id == messageId);
+      notifyListeners();
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -294,6 +305,7 @@ class ChatProvider extends ChangeNotifier {
   Future<void> addReaction(String messageId, String emoji) async {
     try {
       await _chatService.addReaction(messageId, emoji);
+      _updateReactionInMessages({'messageId': messageId});
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -303,6 +315,7 @@ class ChatProvider extends ChangeNotifier {
   Future<void> removeReaction(String messageId, String emoji) async {
     try {
       await _chatService.removeReaction(messageId, emoji);
+      _updateReactionInMessages({'messageId': messageId});
     } catch (e) {
       _error = e.toString();
       notifyListeners();

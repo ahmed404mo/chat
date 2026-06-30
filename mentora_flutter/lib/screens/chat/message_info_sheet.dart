@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../models/conversation.dart';
 import '../../models/user.dart';
-import '../../providers/chat_provider.dart';
 
-class MessageInfoSheet extends StatefulWidget {
+class MessageInfoSheet extends StatelessWidget {
   final Message message;
   final List<User> participants;
   final bool hasAudio;
@@ -17,48 +15,8 @@ class MessageInfoSheet extends StatefulWidget {
     this.hasAudio = false,
   });
 
-  @override
-  State<MessageInfoSheet> createState() => _MessageInfoSheetState();
-}
-
-class _MessageInfoSheetState extends State<MessageInfoSheet> {
-  List<String>? _seenBy;
-  List<String>? _listenedBy;
-  bool _loading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadStatus();
-  }
-
-  Future<void> _loadStatus() async {
-    final chat = context.read<ChatProvider>();
-    final status = await chat.fetchMessageStatus(widget.message.id);
-    if (mounted) {
-      setState(() {
-        if (status != null) {
-          _seenBy = (status['seenBy'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList();
-          _listenedBy = (status['listenedBy'] as List<dynamic>?)
-              ?.map((e) => e as String)
-              .toList();
-        } else {
-          _seenBy = widget.message.seenBy.isNotEmpty
-              ? widget.message.seenBy
-              : null;
-          _listenedBy = widget.message.listenedBy.isNotEmpty
-              ? widget.message.listenedBy
-              : null;
-        }
-        _loading = false;
-      });
-    }
-  }
-
   String _userName(String userId) {
-    return widget.participants
+    return participants
         .where((p) => p.id == userId)
         .firstOrNull
         ?.name ?? userId;
@@ -72,6 +30,9 @@ class _MessageInfoSheetState extends State<MessageInfoSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final seenBy = message.seenBy;
+    final listenedBy = message.listenedBy;
+
     return Container(
       decoration: const BoxDecoration(
         color: AppTheme.surfaceColor,
@@ -104,11 +65,11 @@ class _MessageInfoSheetState extends State<MessageInfoSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              _buildInfoRow('الحالة', _statusText(widget.message.status)),
-              _buildInfoRow('أرسلت في', _formatDateTime(widget.message.createdAt)),
-              if (widget.message.isEdited)
-                _buildInfoRow('تم التعديل', _formatDateTime(widget.message.updatedAt)),
-              if (widget.message.attachments.isNotEmpty) ...[
+              _buildInfoRow('الحالة', _statusText(message.status)),
+              _buildInfoRow('أرسلت في', _formatDateTime(message.createdAt)),
+              if (message.isEdited)
+                _buildInfoRow('تم التعديل', _formatDateTime(message.updatedAt)),
+              if (message.attachments.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 const Text(
                   'المرفقات',
@@ -118,7 +79,7 @@ class _MessageInfoSheetState extends State<MessageInfoSheet> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
-                ...widget.message.attachments.map((a) => Padding(
+                ...message.attachments.map((a) => Padding(
                   padding: const EdgeInsets.only(top: 2),
                   child: Text(
                     a.fileName,
@@ -130,19 +91,10 @@ class _MessageInfoSheetState extends State<MessageInfoSheet> {
                 )),
               ],
               const Divider(height: 24),
-              if (_loading)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(16),
-                    child: CircularProgressIndicator(color: AppTheme.primaryColor),
-                  ),
-                )
-              else ...[
-                _buildSeenBySection(),
-                if (widget.hasAudio && _listenedBy != null) ...[
-                  const SizedBox(height: 12),
-                  _buildListenedBySection(),
-                ],
+              _buildSeenBySection(seenBy),
+              if (hasAudio && listenedBy.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                _buildListenedBySection(listenedBy),
               ],
             ],
           ),
@@ -181,8 +133,8 @@ class _MessageInfoSheetState extends State<MessageInfoSheet> {
     );
   }
 
-  Widget _buildSeenBySection() {
-    if (_seenBy == null || _seenBy!.isEmpty) {
+  Widget _buildSeenBySection(List<String> seenBy) {
+    if (seenBy.isEmpty) {
       return const Text(
         'لا توجد معلومات عن المشاهدة',
         style: TextStyle(
@@ -195,7 +147,7 @@ class _MessageInfoSheetState extends State<MessageInfoSheet> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'تمت المشاهدة (${_seenBy!.length})',
+          'تمت المشاهدة (${seenBy.length})',
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -203,7 +155,7 @@ class _MessageInfoSheetState extends State<MessageInfoSheet> {
           ),
         ),
         const SizedBox(height: 8),
-        ..._seenBy!.map((userId) => Padding(
+        ...seenBy.map((userId) => Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: Row(
             children: [
@@ -211,7 +163,7 @@ class _MessageInfoSheetState extends State<MessageInfoSheet> {
                 radius: 14,
                 backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.2),
                 child: Text(
-                  _userName(userId).substring(0, 1).toUpperCase(),
+                  (_userName(userId).isNotEmpty ? _userName(userId)[0] : '?').toUpperCase(),
                   style: const TextStyle(
                     fontSize: 11,
                     color: AppTheme.primaryColor,
@@ -233,12 +185,12 @@ class _MessageInfoSheetState extends State<MessageInfoSheet> {
     );
   }
 
-  Widget _buildListenedBySection() {
+  Widget _buildListenedBySection(List<String> listenedBy) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'تم الاستماع (${_listenedBy!.length})',
+          'تم الاستماع (${listenedBy.length})',
           style: const TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w600,
@@ -246,7 +198,7 @@ class _MessageInfoSheetState extends State<MessageInfoSheet> {
           ),
         ),
         const SizedBox(height: 8),
-        ..._listenedBy!.map((userId) => Padding(
+        ...listenedBy.map((userId) => Padding(
           padding: const EdgeInsets.only(bottom: 6),
           child: Row(
             children: [

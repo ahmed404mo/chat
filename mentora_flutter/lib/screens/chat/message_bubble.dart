@@ -172,9 +172,9 @@ class MessageBubble extends StatelessWidget {
   }
 
   IconData get _statusIcon {
+    if (_allRead) return Icons.done_all;
     switch (message.status) {
       case 'READ':
-        return Icons.done_all;
       case 'DELIVERED':
         return Icons.done_all;
       default:
@@ -182,10 +182,16 @@ class MessageBubble extends StatelessWidget {
     }
   }
 
+  bool get _allRead {
+    final others = participants.where((p) => p.id != message.senderId).length;
+    return others > 0 && message.seenBy.length >= others;
+  }
+
   Color get _statusColor {
+    if (_allRead) return AppTheme.primaryLight;
     switch (message.status) {
       case 'READ':
-        return AppTheme.primaryLight;
+        return AppTheme.successColor;
       case 'DELIVERED':
         return AppTheme.successColor;
       default:
