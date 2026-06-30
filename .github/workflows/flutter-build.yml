@@ -20,10 +20,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: mentora_flutter
-
     steps:
       - uses: actions/checkout@v4
 
@@ -32,7 +28,6 @@ jobs:
         with:
           flutter-version: '3.27.4'
           channel: 'stable'
-          cache: true
 
       - name: Setup Java 21
         uses: actions/setup-java@v4
@@ -43,31 +38,41 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Configure Flutter Android SDK
+      - name: Create fresh Flutter project
         run: |
-          flutter config --android-sdk $ANDROID_HOME
-          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          cd /tmp
+          flutter create --org com.company --project-name mentora mentora_build
+          echo "Flutter project created"
 
-      - name: Generate local.properties
+      - name: Copy our app code
         run: |
-          echo "sdk.dir=$ANDROID_HOME" > android/local.properties
-          echo "flutter.sdk=$FLUTTER_ROOT" >> android/local.properties
+          rm -rf /tmp/mentora_build/lib/*
+          rm -f /tmp/mentora_build/pubspec.yaml
+          cp -r mentora_flutter/lib/* /tmp/mentora_build/lib/
+          cp mentora_flutter/pubspec.yaml /tmp/mentora_build/pubspec.yaml
+          cp -r mentora_flutter/l10n.yaml /tmp/mentora_build/ 2>/dev/null || true
+          cp -r mentora_flutter/l10n /tmp/mentora_build/ 2>/dev/null || true
+          cp mentora_flutter/android/app/google-services.json /tmp/mentora_build/android/app/google-services.json 2>/dev/null || true
+          echo "Code copied"
 
       - name: Flutter pub get
         run: flutter pub get
+        working-directory: /tmp/mentora_build
 
       - name: Build APK
-        run: flutter build apk --${{ github.event.inputs.build-type || 'debug' }} --no-tree-shake-icons
+        run: flutter build apk --debug
+        working-directory: /tmp/mentora_build
 
       - name: Rename APK
         run: |
           TIMESTAMP=$(date -u '+%Y%m%d_%H%M%S')
-          cp build/app/outputs/flutter-apk/app-${{ github.event.inputs.build-type || 'debug' }}.apk \
-             build/app/outputs/flutter-apk/mentora-flutter-${{ github.event.inputs.build-type || 'debug' }}-$TIMESTAMP.apk
+          cp build/app/outputs/flutter-apk/app-debug.apk \
+             build/app/outputs/flutter-apk/mentora-flutter-debug-$TIMESTAMP.apk
+        working-directory: /tmp/mentora_build
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: mentora-flutter-apk
-          path: mentora_flutter/build/app/outputs/flutter-apk/mentora-flutter-*.apk
+          path: /tmp/mentora_build/build/app/outputs/flutter-apk/mentora-flutter-*.apk
           if-no-files-found: error
