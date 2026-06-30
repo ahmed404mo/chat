@@ -44,6 +44,11 @@ jobs:
           flutter create --org com.company --project-name mentora mentora_build
           echo "Flutter project created"
 
+      - name: Set minSdkVersion to 23 (required by record_android)
+        run: |
+          sed -i 's/minSdkVersion 21/minSdkVersion 23/' /tmp/mentora_build/android/app/build.gradle
+          echo "minSdkVersion set to 23"
+
       - name: Copy our app code
         run: |
           rm -rf /tmp/mentora_build/lib/*
