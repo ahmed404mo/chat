@@ -98,7 +98,17 @@ class ApiService {
   }
 
   dynamic _handleResponse(http.Response response) {
-    final body = response.body.isNotEmpty ? jsonDecode(response.body) : null;
+    dynamic body;
+    try {
+      body = response.body.isNotEmpty ? jsonDecode(response.body) : null;
+    } catch (_) {
+      throw ApiException(
+        response.statusCode >= 200 && response.statusCode < 300
+            ? 'استجابة غير متوقعة من الخادم'
+            : 'خطأ في الاتصال بالخادم (${response.statusCode})',
+        statusCode: response.statusCode,
+      );
+    }
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       if (body is Map && body.containsKey('data')) return body['data'];

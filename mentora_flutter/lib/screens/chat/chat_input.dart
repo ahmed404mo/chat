@@ -245,12 +245,24 @@ class _ChatInputState extends State<ChatInput> {
       ],
     );
 
-    if (result != null && result.files.single.path != null) {
-      setState(() {
-        _selectedFilePath = result.files.single.path;
-        _selectedFileName = result.files.single.name;
-        _recordedPath = null;
-      });
+    if (result != null) {
+      String? path = result.files.single.path;
+      if (path == null) {
+        final bytes = result.files.single.bytes;
+        if (bytes != null) {
+          final dir = await getTemporaryDirectory();
+          final file = File('${dir.path}/${result.files.single.name}');
+          await file.writeAsBytes(bytes);
+          path = file.path;
+        }
+      }
+      if (path != null) {
+        setState(() {
+          _selectedFilePath = path;
+          _selectedFileName = result.files.single.name;
+          _recordedPath = null;
+        });
+      }
     }
   }
 
@@ -258,29 +270,37 @@ class _ChatInputState extends State<ChatInput> {
     if (_isRecording) {
       try {
         final path = await _audioRecorder.stop();
-        if (path != null && path.isNotEmpty) {
-          setState(() {
-            _isRecording = false;
+        setState(() {
+          _isRecording = false;
+          if (path != null && path.isNotEmpty) {
             _recordedPath = path;
             _selectedFileName = 'تسجيل صوتي';
             _selectedFilePath = null;
-          });
-        }
+          }
+        });
       } catch (e) {
         setState(() => _isRecording = false);
-      }
-    } else {
-      final hasPermission = await _audioRecorder.hasPermission();
-      if (!hasPermission) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('يرجى السماح بتسجيل الصوت')),
+            SnackBar(content: Text('خطأ في إيقاف التسجيل: $e')),
           );
         }
-        return;
       }
-
+    } else {
       try {
+        final hasPermission = await _audioRecorder.hasPermission();
+        if (!hasPermission) {
+          final granted = await _audioRecorder.requestPermission();
+          if (!granted) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('يرجى السماح بتسجيل الصوت من الإعدادات')),
+              );
+            }
+            return;
+          }
+        }
+
         final dir = await getTemporaryDirectory();
         final path = '${dir.path}/recording_${DateTime.now().millisecondsSinceEpoch}.m4a';
         await _audioRecorder.start(
@@ -291,7 +311,7 @@ class _ChatInputState extends State<ChatInput> {
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('خطأ في بدء التسجيل: $e')),
+            SnackBar(content: Text('تعذر بدء التسجيل: $e')),
           );
         }
       }
