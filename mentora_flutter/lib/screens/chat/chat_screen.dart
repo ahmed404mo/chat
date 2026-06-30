@@ -22,10 +22,12 @@ class _ChatScreenState extends State<ChatScreen> {
   final _viewableKey = GlobalKey<SliverAnimatedListState>();
   bool _isLoadingMore = false;
   Message? _repliedToMessage;
+  late Conversation _conversation;
 
   @override
   void initState() {
     super.initState();
+    _conversation = widget.conversation;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _markAsRead();
     });
@@ -60,7 +62,9 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final chat = context.watch<ChatProvider>();
     final currentUserId = auth.user?.id ?? '';
+    _conversation = chat.conversations.where((c) => c.id == widget.conversation.id).firstOrNull ?? widget.conversation;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -78,7 +82,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.conversation.displayName(currentUserId),
+                      _conversation.displayName(currentUserId),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -133,7 +137,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
                   final names = typingUsers
                       .map((uid) {
-                        final user = widget.conversation.participants
+                        final user = _conversation.participants
                             .where((p) => p.id == uid)
                             .firstOrNull;
                         return user?.name ?? '';
@@ -163,7 +167,7 @@ class _ChatScreenState extends State<ChatScreen> {
               ChatInput(
                 conversationId: widget.conversation.id,
                 repliedTo: _repliedToMessage,
-                participants: widget.conversation.participants,
+                participants: _conversation.participants,
                 onCancelReply: () => setState(() => _repliedToMessage = null),
               ),
             ],
@@ -269,13 +273,21 @@ class _ChatScreenState extends State<ChatScreen> {
             child: MessageBubble(
               message: message,
               isMine: isMine,
-              participants: widget.conversation.participants,
+              participants: _conversation.participants,
               onReply: (msg) {
                 setState(() => _repliedToMessage = msg);
               },
               onDelete: (msg) => _deleteMessage(msg),
               onEdit: (msg, newContent) => chat.editMessage(msg.id, newContent),
-              onReact: (msg, emoji) => chat.addReaction(msg.id, emoji),
+              onReact: (msg, emoji) {
+                final existing = msg.reactions.where((r) => r.userId == currentUserId);
+                if (existing.any((r) => r.emoji == emoji)) {
+                  chat.removeReaction(msg.id, emoji);
+                } else {
+                  if (existing.isNotEmpty) chat.removeReaction(msg.id, existing.first.emoji);
+                  chat.addReaction(msg.id, emoji);
+                }
+              },
             ),
           );
         },
@@ -284,8 +296,8 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildAvatar(String currentUserId) {
-    final imageUrl = widget.conversation.displayImage(currentUserId);
-    if (widget.conversation.isGroup) {
+    final imageUrl = _conversation.displayImage(currentUserId);
+    if (_conversation.isGroup) {
       if (imageUrl != null) {
         return CircleAvatar(
           radius: 18,
@@ -308,7 +320,7 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     }
 
-    final other = widget.conversation.participants
+    final other = _conversation.participants
         .where((p) => p.id != currentUserId)
         .firstOrNull;
 
@@ -332,7 +344,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _showGroupInfo(BuildContext context) {
-    if (widget.conversation.isGroup) {
+    if (_conversation.isGroup) {
       showModalBottomSheet(
         context: context,
         backgroundColor: AppTheme.surfaceColor,
@@ -340,7 +352,7 @@ class _ChatScreenState extends State<ChatScreen> {
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
         ),
-        builder: (_) => GroupInfoSheet(conversation: widget.conversation),
+        builder: (_) => GroupInfoSheet(conversationId: _conversation.id),
       );
     }
   }

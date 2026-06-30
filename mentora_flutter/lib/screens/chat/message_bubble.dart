@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../../config/theme.dart';
 import '../../models/conversation.dart';
 import '../../models/user.dart';
+import 'message_info_sheet.dart';
 
 class MessageBubble extends StatelessWidget {
   final Message message;
@@ -46,7 +48,7 @@ class MessageBubble extends StatelessWidget {
         onLongPress: () => _showContextMenu(context),
         child: Column(
           crossAxisAlignment:
-              isMine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              isMine ? CrossAxisAlignment.start : CrossAxisAlignment.end,
           children: [
             // Sender name in groups
             if (!isMine && participants.length > 2)
@@ -76,11 +78,11 @@ class MessageBubble extends StatelessWidget {
                     topLeft: const Radius.circular(16),
                     topRight: const Radius.circular(16),
                     bottomLeft: isMine
-                        ? const Radius.circular(16)
-                        : const Radius.circular(4),
-                    bottomRight: isMine
                         ? const Radius.circular(4)
                         : const Radius.circular(16),
+                    bottomRight: isMine
+                        ? const Radius.circular(16)
+                        : const Radius.circular(4),
                   ),
                 ),
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
@@ -110,6 +112,9 @@ class MessageBubble extends StatelessWidget {
                         ),
                       ),
 
+                    // Reactions
+                    if (message.reactions.isNotEmpty) _buildReactions(context),
+
                     // Edited indicator
                     if (message.isEdited)
                       const Padding(
@@ -122,9 +127,6 @@ class MessageBubble extends StatelessWidget {
                           ),
                         ),
                       ),
-
-                    // Reactions
-                    if (message.reactions.isNotEmpty) _buildReactions(),
 
                     // Time and status
                     Padding(
@@ -144,10 +146,13 @@ class MessageBubble extends StatelessWidget {
                           ),
                           if (isMine) ...[
                             const SizedBox(width: 4),
-                            Icon(
-                              _statusIcon,
-                              size: 14,
-                              color: _statusColor,
+                            GestureDetector(
+                              onTap: () => _showMessageInfo(context),
+                              child: Icon(
+                                _statusIcon,
+                                size: 14,
+                                color: _statusColor,
+                              ),
                             ),
                           ],
                         ],
@@ -194,8 +199,8 @@ class MessageBubble extends StatelessWidget {
             ? Colors.black.withValues(alpha: 0.25)
             : AppTheme.borderColor.withValues(alpha: 0.3),
         borderRadius: BorderRadius.circular(8),
-        border: Border(
-          right: BorderSide(
+        border: BorderDirectional(
+          start: BorderSide(
             color: AppTheme.primaryColor,
             width: 3,
           ),
@@ -263,45 +268,7 @@ class MessageBubble extends StatelessWidget {
     }
 
     if (attachment.isAudio) {
-      return Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: AppTheme.cardColor,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.audiotrack,
-                color: AppTheme.primaryColor, size: 20),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    attachment.fileName,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppTheme.textPrimary,
-                    ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    _formatFileSize(attachment.fileSize),
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppTheme.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.play_circle_outline,
-                color: AppTheme.primaryColor, size: 28),
-          ],
-        ),
-      );
+      return _AudioPlayerWidget(attachment: attachment);
     }
 
     return Container(
@@ -346,45 +313,6 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  Widget _buildReactions() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 4),
-      child: Wrap(
-        spacing: 2,
-        runSpacing: 2,
-        children: message.reactions.map((reaction) {
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-            decoration: BoxDecoration(
-              color: AppTheme.primaryColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppTheme.primaryLight.withValues(alpha: 0.3),
-                width: 0.5,
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(reaction.emoji, style: const TextStyle(fontSize: 14)),
-                if (reaction.userName.isNotEmpty) ...[
-                  const SizedBox(width: 2),
-                  Text(
-                    reaction.userName,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: AppTheme.textMuted,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
   void _showContextMenu(BuildContext context) {
     showModalBottomSheet(
       context: context,
@@ -408,9 +336,32 @@ class MessageBubble extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
+              // Reactions row
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  '👍', '❤️', '😂', '😮', '😢', '🙏',
+                ].map((e) => GestureDetector(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    onReact?.call(message, e);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: message.reactions.any((r) => r.emoji == e)
+                          ? AppTheme.primaryColor.withValues(alpha: 0.15)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(e, style: const TextStyle(fontSize: 24)),
+                  ),
+                )).toList(),
+              ),
+              const SizedBox(height: 12),
+
               // Reply
-              if (!isMine)
-                ListTile(
+              ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -461,6 +412,25 @@ class MessageBubble extends StatelessWidget {
                   onTap: () {
                     Navigator.pop(ctx);
                     _showEditDialog(context);
+                  },
+                ),
+
+              // Message info
+              if (isMine)
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.info_outline, color: AppTheme.primaryColor),
+                  ),
+                  title: const Text('تفاصيل الرسالة',
+                      style: TextStyle(color: AppTheme.textPrimary)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showMessageInfo(context);
                   },
                 ),
 
@@ -609,6 +579,139 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
+  Widget _buildReactions(BuildContext context) {
+    final grouped = <String, List<Reaction>>{};
+    for (final r in message.reactions) {
+      grouped.putIfAbsent(r.emoji, () => []).add(r);
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Wrap(
+        spacing: 4,
+        runSpacing: 4,
+        children: grouped.entries.map((entry) {
+          return GestureDetector(
+            onTap: () => _showReactionUsers(context, entry.key, entry.value),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.primaryLight.withValues(alpha: 0.3),
+                  width: 0.5,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(entry.key, style: const TextStyle(fontSize: 13)),
+                  const SizedBox(width: 3),
+                  Text(
+                    '${entry.value.length}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppTheme.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  void _showReactionUsers(BuildContext context, String emoji, List<Reaction> reactions) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppTheme.surfaceColor,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppTheme.textMuted.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 20)),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${reactions.length}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...reactions.map((r) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 14,
+                      backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.2),
+                      child: Text(
+                        (r.userName.isNotEmpty ? r.userName : r.userId)
+                            .substring(0, 1)
+                            .toUpperCase(),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppTheme.primaryColor,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      r.userName.isNotEmpty ? r.userName : r.userId,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMessageInfo(BuildContext context) {
+    final hasAudio = message.attachments.any((a) => a.isAudio);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => MessageInfoSheet(
+        message: message,
+        participants: participants,
+        hasAudio: hasAudio,
+      ),
+    );
+  }
+
   void _showImagePreview(BuildContext context, String url) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -648,6 +751,13 @@ class MessageBubble extends StatelessWidget {
     return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
+
+String _formatDuration(Duration duration) {
+  final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
+  final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+  return '$minutes:$seconds';
+}
+
   IconData _getFileIcon(String mimeType) {
     if (mimeType.startsWith('image/')) return Icons.image;
     if (mimeType.startsWith('audio/')) return Icons.audiotrack;
@@ -662,5 +772,120 @@ class MessageBubble extends StatelessWidget {
     if (mimeType.contains('zip') || mimeType.contains('rar'))
       return Icons.folder_zip;
     return Icons.insert_drive_file;
+  }
+}
+
+class _AudioPlayerWidget extends StatefulWidget {
+  final Attachment attachment;
+  const _AudioPlayerWidget({required this.attachment});
+
+  @override
+  State<_AudioPlayerWidget> createState() => _AudioPlayerWidgetState();
+}
+
+class _AudioPlayerWidgetState extends State<_AudioPlayerWidget> {
+  final _player = AudioPlayer();
+  bool _isPlaying = false;
+  Duration _position = Duration.zero;
+  Duration _duration = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _player.setSourceUrl(widget.attachment.url);
+    _player.getDuration().then((d) {
+      if (d != null && mounted) setState(() => _duration = d);
+    });
+    _player.onPositionChanged.listen((p) {
+      if (mounted) setState(() => _position = p);
+    });
+    _player.onPlayerComplete.listen((_) {
+      if (mounted) setState(() {
+        _isPlaying = false;
+        _position = Duration.zero;
+      });
+    });
+    _player.onPlayerStateChanged.listen((s) {
+      if (mounted) setState(() => _isPlaying = s == PlayerState.playing);
+    });
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  void _togglePlay() {
+    if (_isPlaying) {
+      _player.pause();
+    } else {
+      _player.resume();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = _duration.inMilliseconds > 0
+        ? _position.inMilliseconds / _duration.inMilliseconds
+        : 0.0;
+
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: AppTheme.cardColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+            onTap: _togglePlay,
+            child: Icon(
+              _isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+              color: AppTheme.primaryColor,
+              size: 28,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    backgroundColor: AppTheme.borderColor,
+                    color: AppTheme.primaryColor,
+                    minHeight: 4,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                      Text(
+                      _formatDuration(_position),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                    Text(
+                      _formatDuration(_duration),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: AppTheme.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

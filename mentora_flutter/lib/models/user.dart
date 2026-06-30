@@ -66,11 +66,12 @@ class User {
   }
 
   String get initials {
-    final parts = name.split(' ');
+    final parts = name.split(' ').where((p) => p.isNotEmpty).toList();
     if (parts.length >= 2) {
       return '${parts.first[0]}${parts.last[0]}';
     }
-    return name.isNotEmpty ? name[0] : '?';
+    if (parts.isNotEmpty) return parts.first[0];
+    return '?';
   }
 
   bool get isAdmin => role == 'admin';

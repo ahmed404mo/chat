@@ -16,7 +16,7 @@ extension DateTimeFormatting on DateTime {
 }
 
 extension StringCasing on String {
-  String get capitalize => '${this[0].toUpperCase()}${substring(1)}';
+  String get capitalize => isNotEmpty ? '${this[0].toUpperCase()}${substring(1)}' : '';
 }
 
 extension ContextExtensions on BuildContext {

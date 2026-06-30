@@ -11,12 +11,18 @@ import '../../services/chat_service.dart';
 import '../../services/user_service.dart';
 
 class GroupInfoSheet extends StatelessWidget {
-  final Conversation conversation;
+  final String conversationId;
 
-  const GroupInfoSheet({super.key, required this.conversation});
+  const GroupInfoSheet({super.key, required this.conversationId});
 
   @override
   Widget build(BuildContext context) {
+    final chat = context.watch<ChatProvider>();
+    final conversation = chat.conversations.where((c) => c.id == conversationId).firstOrNull;
+    if (conversation == null) {
+      return const SizedBox.shrink();
+    }
+
     return DraggableScrollableSheet(
       initialChildSize: 0.6,
       maxChildSize: 0.85,
@@ -398,18 +404,111 @@ class GroupInfoSheet extends StatelessWidget {
   }
 
   void _generateInviteCode(BuildContext context) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
     try {
       final code = await context.read<ChatProvider>().generateInviteCode(conversation.id);
       if (context.mounted) {
-        await Clipboard.setData(ClipboardData(text: code));
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('تم نسخ رمز الدعوة!')),
-        );
+        Navigator.pop(context);
       }
+      if (!context.mounted) return;
+
+      await Clipboard.setData(ClipboardData(text: code));
+
+      showDialog(
+        context: context,
+        builder: (ctx) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            backgroundColor: AppTheme.surfaceColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text(
+              'رمز الدعوة',
+              style: TextStyle(color: AppTheme.textPrimary),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'استخدم هذا الرمز لدعوة أعضاء جدد',
+                  style: TextStyle(color: AppTheme.textSecondary),
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
+                  decoration: BoxDecoration(
+                    color: AppTheme.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppTheme.borderColor),
+                  ),
+                  child: Text(
+                    code,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'تم نسخ الرمز إلى الحافظة',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.successColor,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إغلاق', style: TextStyle(color: AppTheme.textMuted)),
+              ),
+              TextButton(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: code));
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('تم نسخ رمز الدعوة!'), duration: Duration(seconds: 2)),
+                  );
+                },
+                child: const Text('نسخ', style: TextStyle(color: AppTheme.primaryColor)),
+              ),
+            ],
+          ),
+        ),
+      );
     } catch (e) {
+      if (context.mounted) Navigator.pop(context);
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('خطأ: $e')),
+        showDialog(
+          context: context,
+          builder: (ctx) => Directionality(
+            textDirection: TextDirection.rtl,
+            child: AlertDialog(
+              backgroundColor: AppTheme.surfaceColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('خطأ', style: TextStyle(color: AppTheme.errorColor)),
+              content: Text(
+                'تعذر إنشاء رمز الدعوة. تأكد من اتصالك بالإنترنت وحاول مرة أخرى.\n\n$e',
+                style: const TextStyle(color: AppTheme.textSecondary),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('إغلاق', style: TextStyle(color: AppTheme.textMuted)),
+                ),
+              ],
+            ),
+          ),
         );
       }
     }

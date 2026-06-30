@@ -262,6 +262,16 @@ class ChatProvider extends ChangeNotifier {
     }
   }
 
+  Future<Map<String, dynamic>?> fetchMessageStatus(String messageId) async {
+    try {
+      return await _chatService.getMessageStatus(messageId);
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
+
   Future<void> addReaction(String messageId, String emoji) async {
     try {
       await _chatService.addReaction(messageId, emoji);

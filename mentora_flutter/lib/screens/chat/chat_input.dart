@@ -34,7 +34,6 @@ class _ChatInputState extends State<ChatInput> {
   final _audioRecorder = AudioRecorder();
   bool _isComposing = false;
   bool _isRecording = false;
-  bool _showEmojiPicker = false;
   String? _selectedFilePath;
   String? _selectedFileName;
   Timer? _typingTimer;
@@ -193,18 +192,18 @@ class _ChatInputState extends State<ChatInput> {
       curve: Curves.easeInOut,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: _isRecording ? AppTheme.errorColor : AppTheme.cardColor,
-          borderRadius: BorderRadius.circular(24),
+          color: _isRecording ? AppTheme.errorColor : AppTheme.primaryColor.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(28),
         ),
         child: InkWell(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(28),
           onTap: _toggleRecording,
           child: Padding(
-            padding: const EdgeInsets.all(10),
+            padding: const EdgeInsets.all(14),
             child: Icon(
               _isRecording ? Icons.stop_rounded : Icons.mic,
-              color: _isRecording ? Colors.white : AppTheme.textMuted,
-              size: 22,
+              color: _isRecording ? Colors.white : AppTheme.primaryColor,
+              size: 26,
             ),
           ),
         ),
@@ -448,8 +447,8 @@ class _ChatInputState extends State<ChatInput> {
               padding: EdgeInsets.only(
                 left: 8,
                 right: 8,
-                bottom: MediaQuery.of(context).padding.bottom + 4,
-                top: 4,
+                bottom: MediaQuery.of(context).padding.bottom + 8,
+                top: 8,
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
@@ -458,16 +457,16 @@ class _ChatInputState extends State<ChatInput> {
                   Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(24),
                       onTap: _pickFile,
                       child: Padding(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(10),
                         child: Icon(
                           Icons.attach_file,
                           color: _selectedFilePath != null
                               ? AppTheme.primaryColor
                               : AppTheme.textMuted,
-                          size: 24,
+                          size: 26,
                         ),
                       ),
                     ),
@@ -479,7 +478,7 @@ class _ChatInputState extends State<ChatInput> {
                       constraints: const BoxConstraints(maxHeight: 200),
                       decoration: BoxDecoration(
                         color: AppTheme.cardColor,
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(24),
                         border: Border.all(
                           color: _isComposing
                               ? AppTheme.primaryColor.withValues(alpha: 0.5)
@@ -499,13 +498,13 @@ class _ChatInputState extends State<ChatInput> {
                               onSubmitted: _isComposing ? (_) => _sendMessage() : null,
                               style: const TextStyle(
                                 color: AppTheme.textPrimary,
-                                fontSize: 15,
+                                fontSize: 16,
                               ),
                               decoration: const InputDecoration(
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.symmetric(
                                   horizontal: 16,
-                                  vertical: 10,
+                                  vertical: 14,
                                 ),
                                 hintText: 'اكتب رسالة...',
                                 hintStyle: TextStyle(color: AppTheme.textMuted),
@@ -513,25 +512,6 @@ class _ChatInputState extends State<ChatInput> {
                             ),
                           ),
 
-                          // Emoji button
-                          Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(20),
-                              onTap: () {
-                                setState(() => _showEmojiPicker = !_showEmojiPicker);
-                                if (_showEmojiPicker) _focusNode.unfocus();
-                              },
-                              child: const Padding(
-                                padding: EdgeInsets.all(8),
-                                child: Icon(
-                                  Icons.emoji_emotions_outlined,
-                                  color: AppTheme.textMuted,
-                                  size: 22,
-                                ),
-                              ),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -551,16 +531,16 @@ class _ChatInputState extends State<ChatInput> {
                         ? Material(
                             key: const ValueKey('send'),
                             color: AppTheme.primaryColor,
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(28),
                             child: InkWell(
-                              borderRadius: BorderRadius.circular(24),
+                              borderRadius: BorderRadius.circular(28),
                               onTap: _sendMessage,
                               child: const Padding(
-                                padding: EdgeInsets.all(10),
+                                padding: EdgeInsets.all(14),
                                 child: Icon(
                                   Icons.send_rounded,
                                   color: Colors.white,
-                                  size: 22,
+                                  size: 26,
                                 ),
                               ),
                             ),

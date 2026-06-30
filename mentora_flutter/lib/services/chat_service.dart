@@ -100,6 +100,11 @@ class ChatService {
     });
   }
 
+  Future<Map<String, dynamic>> getMessageStatus(String messageId) async {
+    final data = await _api.get('/chat/messages/$messageId/status') as Map<String, dynamic>;
+    return data;
+  }
+
   Future<void> addReaction(String messageId, String emoji) async {
     await _api.post('/chat/messages/reaction', body: {
       'messageId': messageId,

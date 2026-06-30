@@ -40,9 +40,12 @@ class Conversation {
           ? Message.fromJson(json['lastMessage'] as Map<String, dynamic>)
           : null,
       participants: (json['participants'] as List<dynamic>?)
-              ?.map((e) =>
-                  User.fromJson((e as Map<String, dynamic>)['user'] as Map<String, dynamic>))
-              .toList() ??
+              ?.map((e) {
+                final map = e as Map<String, dynamic>;
+                return User.fromJson(
+                  (map['user'] as Map<String, dynamic>?) ?? map,
+                );
+              }).toList() ??
           [],
       inviteCodes: (json['inviteCodes'] as List<dynamic>?)
               ?.map((e) => InviteCode.fromJson(e as Map<String, dynamic>))
@@ -170,6 +173,8 @@ class Message {
     bool? isPinned,
     List<String>? mentionedUserIds,
     List<Reaction>? reactions,
+    List<String>? seenBy,
+    List<String>? listenedBy,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -186,6 +191,8 @@ class Message {
       isPinned: isPinned ?? this.isPinned,
       mentionedUserIds: mentionedUserIds ?? this.mentionedUserIds,
       reactions: reactions ?? this.reactions,
+      seenBy: seenBy ?? this.seenBy,
+      listenedBy: listenedBy ?? this.listenedBy,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -203,6 +210,8 @@ class Message {
   final bool isPinned;
   final List<String> mentionedUserIds;
   final List<Reaction> reactions;
+  final List<String> seenBy;
+  final List<String> listenedBy;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -219,6 +228,8 @@ class Message {
     this.isPinned = false,
     this.mentionedUserIds = const [],
     this.reactions = const [],
+    this.seenBy = const [],
+    this.listenedBy = const [],
     required this.createdAt,
     required this.updatedAt,
   });
@@ -246,6 +257,14 @@ class Message {
           [],
       reactions: (json['reactions'] as List<dynamic>?)
               ?.map((e) => Reaction.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
+      seenBy: (json['seenBy'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      listenedBy: (json['listenedBy'] as List<dynamic>?)
+              ?.map((e) => e as String)
               .toList() ??
           [],
       createdAt: DateTime.parse(json['createdAt'] as String),
