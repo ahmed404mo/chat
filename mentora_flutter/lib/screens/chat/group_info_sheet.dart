@@ -99,16 +99,16 @@ class GroupInfoSheet extends StatelessWidget {
                     children: [
                       if (canManage)
                         _buildActionButton(context, Icons.edit, 'إعادة تسمية', () {
-                          _showRenameDialog(context);
+                          _showRenameDialog(context, conversation);
                         }),
                       if (canManage) const SizedBox(width: 16),
                       _buildActionButton(context, Icons.link, 'رمز الدعوة', () {
-                        _generateInviteCode(context);
+                        _generateInviteCode(context, conversation);
                       }),
                       if (canManage) ...[
                         const SizedBox(width: 16),
                         _buildActionButton(context, Icons.person_add, 'إضافة أعضاء', () {
-                          _showAddMembers(context);
+                          _showAddMembers(context, conversation);
                         }),
                       ],
                     ],
@@ -232,7 +232,7 @@ class GroupInfoSheet extends StatelessWidget {
     );
   }
 
-  void _showRenameDialog(BuildContext context) {
+  void _showRenameDialog(BuildContext context, Conversation conversation) {
     final controller = TextEditingController(text: conversation.title);
     showDialog(
       context: context,
@@ -303,7 +303,7 @@ class GroupInfoSheet extends StatelessWidget {
     );
   }
 
-  void _showAddMembers(BuildContext context) {
+  void _showAddMembers(BuildContext context, Conversation conversation) {
     final chatService = ChatService();
     showDialog(
       context: context,
@@ -403,7 +403,7 @@ class GroupInfoSheet extends StatelessWidget {
     );
   }
 
-  void _generateInviteCode(BuildContext context) async {
+  void _generateInviteCode(BuildContext context, Conversation conversation) async {
     showDialog(
       context: context,
       barrierDismissible: false,
