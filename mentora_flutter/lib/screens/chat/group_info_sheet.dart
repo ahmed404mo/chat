@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../config/theme.dart';
 import '../../models/conversation.dart';
 import '../../models/user.dart' as model;
+import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../services/chat_service.dart';
 import '../../services/user_service.dart';

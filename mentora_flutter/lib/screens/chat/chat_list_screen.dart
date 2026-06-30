@@ -326,9 +326,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   ),
                 ),
               ],
-            ),
-          ),  // InkWell
-        ),  // Material
+            ),  // Row
+        ),  // inner Padding
+      ),  // InkWell
+    ),  // Material
     ),  // outer Padding
   );  // TweenAnimationBuilder
   }
@@ -354,10 +355,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
         ),
         child: const Center(
           child: Icon(Icons.group, color: Colors.white, size: 24),
-      ),
-      ),
-    );
-  }
+        ),
+      );
+    }
 
     final other = conversation.participants
         .where((p) => p.id != currentUserId)
