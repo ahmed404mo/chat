@@ -40,6 +40,9 @@ jobs:
           distribution: 'temurin'
           java-version: '21'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Flutter pub get
         run: flutter pub get
 
