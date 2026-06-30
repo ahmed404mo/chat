@@ -64,7 +64,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               itemCount: chat.conversations.length,
               itemBuilder: (context, index) {
-                return _buildConversationItem(context, chat.conversations[index]);
+                return _buildConversationItem(context, chat.conversations[index], index);
               },
             ),
           );
@@ -214,12 +214,26 @@ class _ChatListScreenState extends State<ChatListScreen> {
     );
   }
 
-  Widget _buildConversationItem(BuildContext context, Conversation conversation) {
+  Widget _buildConversationItem(BuildContext context, Conversation conversation, int index) {
     final auth = context.watch<AuthProvider>();
     final currentUserId = auth.user?.id ?? '';
     final isUnread = conversation.unreadCount > 0;
 
-    return Padding(
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(conversation.id),
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: Duration(milliseconds: 200 + (index * 50).clamp(0, 400)),
+      curve: Curves.easeOut,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 20 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Material(
         color: Colors.transparent,
@@ -313,10 +327,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
+          ),  // InkWell
+        ),  // Material
+    ),  // outer Padding
+  );  // TweenAnimationBuilder
   }
 
   Widget _buildAvatar(Conversation conversation, String currentUserId) {
@@ -340,9 +354,10 @@ class _ChatListScreenState extends State<ChatListScreen> {
         ),
         child: const Center(
           child: Icon(Icons.group, color: Colors.white, size: 24),
-        ),
-      );
-    }
+      ),
+      ),
+    );
+  }
 
     final other = conversation.participants
         .where((p) => p.id != currentUserId)

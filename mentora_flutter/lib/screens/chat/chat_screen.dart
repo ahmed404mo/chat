@@ -65,6 +65,7 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
+        centerTitle: false,
         title: GestureDetector(
           onTap: () => _showGroupInfo(context),
           child: Row(
@@ -251,14 +252,31 @@ class _ChatScreenState extends State<ChatScreen> {
           final message = reversedMessages[index];
           final isMine = message.senderId == currentUserId;
 
-          return MessageBubble(
-            message: message,
-            isMine: isMine,
-            onReply: (msg) {
-              setState(() => _repliedToMessage = msg);
+          return TweenAnimationBuilder<double>(
+            key: ValueKey(message.id),
+            tween: Tween(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOut,
+            builder: (context, value, child) {
+              return Opacity(
+                opacity: value,
+                child: Transform.translate(
+                  offset: Offset(0, 16 * (1 - value)),
+                  child: child,
+                ),
+              );
             },
-            onDelete: (msg) => _showDeleteOptions(msg),
-            onReact: (msg, emoji) => chat.addReaction(msg.id, emoji),
+            child: MessageBubble(
+              message: message,
+              isMine: isMine,
+              participants: widget.conversation.participants,
+              onReply: (msg) {
+                setState(() => _repliedToMessage = msg);
+              },
+              onDelete: (msg) => _deleteMessage(msg),
+              onEdit: (msg, newContent) => chat.editMessage(msg.id, newContent),
+              onReact: (msg, emoji) => chat.addReaction(msg.id, emoji),
+            ),
           );
         },
       ),
@@ -327,79 +345,7 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _showDeleteOptions(Message message) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppTheme.surfaceColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppTheme.textMuted.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'حذف الرسالة',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 24),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.errorColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.delete, color: AppTheme.errorColor),
-                ),
-                title: const Text('حذف للجميع',
-                    style: TextStyle(color: AppTheme.textPrimary)),
-                subtitle: const Text('سيتم حذف الرسالة للجميع',
-                    style: TextStyle(color: AppTheme.textSecondary)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.read<ChatProvider>().deleteMessage(message.id, forEveryone: true);
-                },
-              ),
-              const Divider(),
-              ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppTheme.textMuted.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.delete_outline, color: AppTheme.textMuted),
-                ),
-                title: const Text('حذف لدي',
-                    style: TextStyle(color: AppTheme.textPrimary)),
-                subtitle: const Text('سيتم حذف الرسالة لك فقط',
-                    style: TextStyle(color: AppTheme.textSecondary)),
-                onTap: () {
-                  Navigator.pop(ctx);
-                  context.read<ChatProvider>().deleteMessage(message.id, forEveryone: false);
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ),
-    );
+  void _deleteMessage(Message message) {
+    context.read<ChatProvider>().deleteMessage(message.id, forEveryone: true);
   }
 }

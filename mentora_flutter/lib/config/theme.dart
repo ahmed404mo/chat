@@ -14,8 +14,8 @@ class AppTheme {
   static const Color errorColor = Color(0xFFEF4444);
   static const Color successColor = Color(0xFF22C55E);
   static const Color warningColor = Color(0xFFF59E0B);
-  static const Color messageSent = Color(0xFF363654);
-  static const Color messageReceived = Color(0xFF252538);
+  static const Color messageSent = Color(0xFF3B3B8C);
+  static const Color messageReceived = Color(0xFF2A2A3E);
   static const Color onlineGreen = Color(0xFF22C55E);
 
   static ThemeData get darkTheme {

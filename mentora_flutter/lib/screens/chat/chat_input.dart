@@ -181,6 +181,37 @@ class _ChatInputState extends State<ChatInput> {
     });
   }
 
+  String _repliedToSenderName(String senderId) {
+    final sender = widget.participants.where((p) => p.id == senderId).firstOrNull;
+    return sender?.name ?? senderId;
+  }
+
+  Widget _buildMicButton() {
+    return AnimatedScale(
+      scale: _isRecording ? 1.15 : 1.0,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: _isRecording ? AppTheme.errorColor : AppTheme.cardColor,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: _toggleRecording,
+          child: Padding(
+            padding: const EdgeInsets.all(10),
+            child: Icon(
+              _isRecording ? Icons.stop_rounded : Icons.mic,
+              color: _isRecording ? Colors.white : AppTheme.textMuted,
+              size: 22,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _sendMessage() async {
     final text = _textController.text.trim();
     final filePath = _selectedFilePath ?? _recordedPath;
@@ -307,14 +338,14 @@ class _ChatInputState extends State<ChatInput> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'رد على ${widget.repliedTo!.senderId}',
-                            style: const TextStyle(
-                              fontSize: 12,
-                              color: AppTheme.primaryColor,
-                              fontWeight: FontWeight.w600,
+                            Text(
+                              'رد على ${_repliedToSenderName(widget.repliedTo!.senderId)}',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppTheme.primaryColor,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          ),
                           Text(
                             widget.repliedTo!.content.isNotEmpty
                                 ? widget.repliedTo!.content
@@ -445,7 +476,7 @@ class _ChatInputState extends State<ChatInput> {
                   // Text field
                   Expanded(
                     child: Container(
-                      constraints: const BoxConstraints(maxHeight: 120),
+                      constraints: const BoxConstraints(maxHeight: 200),
                       decoration: BoxDecoration(
                         color: AppTheme.cardColor,
                         borderRadius: BorderRadius.circular(20),
@@ -509,41 +540,33 @@ class _ChatInputState extends State<ChatInput> {
                   const SizedBox(width: 4),
 
                   // Send/Record button
-                  _isComposing || _selectedFilePath != null || _recordedPath != null
-                      ? Material(
-                          color: AppTheme.primaryColor,
-                          borderRadius: BorderRadius.circular(24),
-                          child: InkWell(
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    transitionBuilder: (child, animation) {
+                      return ScaleTransition(scale: animation, child: child);
+                    },
+                    child: _isComposing || _selectedFilePath != null || _recordedPath != null
+                        ? Material(
+                            key: const ValueKey('send'),
+                            color: AppTheme.primaryColor,
                             borderRadius: BorderRadius.circular(24),
-                            onTap: _sendMessage,
-                            child: const Padding(
-                              padding: EdgeInsets.all(10),
-                              child: Icon(
-                                Icons.send_rounded,
-                                color: Colors.white,
-                                size: 22,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(24),
+                              onTap: _sendMessage,
+                              child: const Padding(
+                                padding: EdgeInsets.all(10),
+                                child: Icon(
+                                  Icons.send_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
                               ),
                             ),
-                          ),
-                        )
-                      : Material(
-                          color: _isRecording ? AppTheme.errorColor : AppTheme.cardColor,
-                          borderRadius: BorderRadius.circular(24),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(24),
-                            onTap: _toggleRecording,
-                            child: Padding(
-                              padding: const EdgeInsets.all(10),
-                              child: Icon(
-                                _isRecording ? Icons.stop_rounded : Icons.mic,
-                                color: _isRecording
-                                    ? Colors.white
-                                    : AppTheme.textMuted,
-                                size: 22,
-                              ),
-                            ),
-                          ),
-                        ),
+                          )
+                        : _buildMicButton(),
+                  ),
                 ],
               ),
             ),
