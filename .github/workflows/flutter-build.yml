@@ -15,6 +15,7 @@ on:
     branches: [main]
     paths:
       - 'mentora_flutter/**'
+      - '.github/workflows/flutter-build.yml'
 
 jobs:
   build:
