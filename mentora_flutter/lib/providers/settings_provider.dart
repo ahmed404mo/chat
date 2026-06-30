@@ -9,13 +9,15 @@ class SettingsProvider extends ChangeNotifier {
   bool get notificationsEnabled => _notificationsEnabled;
 
   SettingsProvider() {
-    _load();
+    _init();
   }
 
-  Future<void> _load() async {
-    final prefs = await SharedPreferences.getInstance();
-    _notificationsEnabled = prefs.getBool(_notifKey) ?? true;
-    notifyListeners();
+  Future<void> _init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      _notificationsEnabled = prefs.getBool(_notifKey) ?? true;
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> toggleNotifications() async {

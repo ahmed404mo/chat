@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import '../models/conversation.dart';
 import '../models/user.dart';
@@ -164,9 +165,10 @@ class ChatProvider extends ChangeNotifier {
 
     await _pusherService.subscribeToConversation(conversationId);
 
-    _activeConversation = _conversations.firstWhere(
+    _activeConversation = _conversations.firstWhereOrNull(
       (c) => c.id == conversationId,
     );
+    if (_activeConversation == null) return;
 
     await loadMessages();
     notifyListeners();
@@ -288,8 +290,8 @@ class ChatProvider extends ChangeNotifier {
 
     try {
       await _chatService.markAsRead(conversationId, unreadMessages);
-      final conv = _conversations.firstWhere((c) => c.id == conversationId);
-      conv.unreadCount = 0;
+      final conv = _conversations.firstWhereOrNull((c) => c.id == conversationId);
+      conv?.unreadCount = 0;
       notifyListeners();
     } catch (e) {
       // silently fail

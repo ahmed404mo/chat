@@ -42,7 +42,7 @@ jobs:
       - name: Create fresh Flutter project
         run: |
           cd /tmp
-          flutter create --org com.company --project-name mentora mentora_build
+          flutter create --org com.company --project-name platform mentora_build
           echo "Flutter project created"
 
       - name: Copy our app code
@@ -57,6 +57,10 @@ jobs:
           cp mentora_flutter/android/app/build.gradle /tmp/mentora_build/android/app/build.gradle
           cp mentora_flutter/android/build.gradle /tmp/mentora_build/android/build.gradle
           cp mentora_flutter/android/settings.gradle /tmp/mentora_build/android/settings.gradle
+          rm -f /tmp/mentora_build/android/app/src/main/AndroidManifest.xml
+          cp mentora_flutter/android/app/src/main/AndroidManifest.xml /tmp/mentora_build/android/app/src/main/AndroidManifest.xml
+          rm -rf /tmp/mentora_build/android/app/src/main/kotlin/*
+          cp -r mentora_flutter/android/app/src/main/kotlin/* /tmp/mentora_build/android/app/src/main/kotlin/
           sed -i 's/minSdkVersion="[0-9]*"/minSdkVersion="23"/' /tmp/mentora_build/android/app/src/debug/AndroidManifest.xml 2>/dev/null || true
           echo "=== Verifying ==="
           grep -n 'minSdk' /tmp/mentora_build/android/app/build.gradle

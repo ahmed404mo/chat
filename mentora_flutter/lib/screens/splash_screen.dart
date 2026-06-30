@@ -27,7 +27,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
       if (!mounted) return;
 
-      if (auth.isAuthenticated) {
+      if (auth.isAuthenticated && auth.user != null) {
         context.read<ChatProvider>().setCurrentUserId(auth.user!.id);
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const MainShell()),
