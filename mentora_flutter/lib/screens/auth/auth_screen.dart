@@ -224,7 +224,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                             if (_capsLockOn)
                               const Padding(
                                 padding: EdgeInsets.only(left: 4),
-                                child: Icon(Icons.caps_lock, size: 18, color: AppTheme.warningColor),
+                                child: Icon(Icons.arrow_upward, size: 18, color: AppTheme.warningColor),
                               ),
                             IconButton(
                               icon: Icon(
