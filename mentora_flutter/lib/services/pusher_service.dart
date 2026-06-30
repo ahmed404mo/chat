@@ -28,8 +28,8 @@ class PusherService {
     await _pusher!.init(
       apiKey: AppConstants.pusherKey,
       cluster: AppConstants.pusherCluster,
-      onConnectionStateChange: (state) {
-        print('Pusher state: ${state.currentState}');
+      onConnectionStateChange: (currentState, previousState) {
+        print('Pusher state: $currentState');
       },
       onError: (message, code, error) {
         print('Pusher error: $message code: $code exception: $error');
@@ -49,7 +49,7 @@ class PusherService {
 
     await _pusher!.connect();
 
-    final presenceChannel = await _pusher!.subscribe(
+    await _pusher!.subscribe(
       channelName: 'presence-mentora',
       onEvent: (event) {
         _handlePresenceEvent(event);
@@ -142,17 +142,21 @@ class PusherService {
 
   Future<void> emitTyping(String conversationId) async {
     await _pusher?.trigger(
-      channelName: 'private-conversation-$conversationId',
-      eventName: 'client-typing',
-      data: {'conversationId': conversationId},
+      PusherEvent(
+        channelName: 'private-conversation-$conversationId',
+        eventName: 'client-typing',
+        data: {'conversationId': conversationId},
+      ),
     );
   }
 
   Future<void> emitStopTyping(String conversationId) async {
     await _pusher?.trigger(
-      channelName: 'private-conversation-$conversationId',
-      eventName: 'client-stop-typing',
-      data: {'conversationId': conversationId},
+      PusherEvent(
+        channelName: 'private-conversation-$conversationId',
+        eventName: 'client-stop-typing',
+        data: {'conversationId': conversationId},
+      ),
     );
   }
 

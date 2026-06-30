@@ -59,8 +59,12 @@ jobs:
         run: flutter pub get
         working-directory: /tmp/mentora_build
 
+      - name: Generate localizations
+        run: flutter gen-l10n
+        working-directory: /tmp/mentora_build
+
       - name: Build APK
-        run: flutter build apk --debug
+        run: flutter build apk --debug --no-tree-shake-icons
         working-directory: /tmp/mentora_build
 
       - name: Rename APK

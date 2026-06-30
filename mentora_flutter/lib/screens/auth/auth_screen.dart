@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/chat_provider.dart';
 import '../chat/main_shell.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -223,7 +224,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                             if (_capsLockOn)
                               const Padding(
                                 padding: EdgeInsets.only(left: 4),
-                                child: Icon(Icons.capslock, size: 18, color: AppTheme.warningColor),
+                                child: Icon(Icons.caps_lock, size: 18, color: AppTheme.warningColor),
                               ),
                             IconButton(
                               icon: Icon(

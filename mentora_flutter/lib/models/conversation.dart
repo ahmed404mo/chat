@@ -191,7 +191,6 @@ class Message {
   }
 
   final String id;
-  final String id;
   final String content;
   final String status;
   final String senderId;
