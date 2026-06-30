@@ -120,10 +120,14 @@ class ChatService {
   }
 
   Future<String> generateInviteCode(String conversationId) async {
-    final data = await _api.post('/chat/invite', body: {
+    final result = await _api.post('/chat/invite', body: {
       'conversationId': conversationId,
-    }) as Map<String, dynamic>;
-    return data['code'] as String;
+    });
+    if (result is Map<String, dynamic>) {
+      final code = result['code'] ?? result['inviteCode'];
+      if (code is String) return code;
+    }
+    throw Exception('تعذر إنشاء رمز الدعوة');
   }
 
   Future<Conversation?> joinViaCode(String code) async {

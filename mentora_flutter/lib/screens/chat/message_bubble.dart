@@ -46,6 +46,11 @@ class MessageBubble extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 3),
       child: GestureDetector(
         onLongPress: () => _showContextMenu(context),
+        onHorizontalDragEnd: (details) {
+          if (details.primaryVelocity != null && details.primaryVelocity! > 0) {
+            onReply?.call(message);
+          }
+        },
         child: Column(
           crossAxisAlignment:
               isMine ? CrossAxisAlignment.start : CrossAxisAlignment.end,
@@ -101,13 +106,11 @@ class MessageBubble extends StatelessWidget {
 
                     // Content
                     if (message.content.isNotEmpty)
-                      SelectableText(
+                      Text(
                         message.content,
                         style: TextStyle(
                           fontSize: 15,
-                          color: isMine
-                              ? AppTheme.textPrimary
-                              : AppTheme.textPrimary,
+                          color: AppTheme.textPrimary,
                           height: 1.4,
                         ),
                       ),

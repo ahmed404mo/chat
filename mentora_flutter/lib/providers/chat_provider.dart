@@ -229,15 +229,34 @@ class ChatProvider extends ChangeNotifier {
     }
 
     try {
-      await _chatService.sendMessage(
+      final msg = await _chatService.sendMessage(
         conversationId: conversationId,
         content: content,
         repliedToId: repliedToId,
         mentionedUserIds: mentionedIds.isNotEmpty ? mentionedIds : null,
         filePath: filePath,
       );
+      _messages.insert(0, msg);
+      _updateLastMessage(msg);
       _error = null;
       stopTyping();
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> deleteConversation(String id) async {
+    try {
+      await _chatService.deleteConversation(id);
+      _conversations.removeWhere((c) => c.id == id);
+      if (_activeConversationId == id) {
+        _activeConversation = null;
+        _activeConversationId = null;
+        _messages = [];
+      }
+      notifyListeners();
     } catch (e) {
       _error = e.toString();
       notifyListeners();
@@ -309,7 +328,13 @@ class ChatProvider extends ChangeNotifier {
   }
 
   Future<String> generateInviteCode(String conversationId) async {
-    return await _chatService.generateInviteCode(conversationId);
+    try {
+      return await _chatService.generateInviteCode(conversationId);
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
   }
 
   Future<Conversation?> joinViaCode(String code) async {

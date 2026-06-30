@@ -95,22 +95,34 @@ class GroupInfoSheet extends StatelessWidget {
                 builder: (ctx) {
                   final auth = ctx.watch<AuthProvider>();
                   final canManage = auth.user?.canManageConversations ?? false;
-                  return Row(
+                  return Column(
                     children: [
-                      if (canManage)
-                        _buildActionButton(context, Icons.edit, 'إعادة تسمية', () {
-                          _showRenameDialog(context, conversation);
-                        }),
-                      if (canManage) const SizedBox(width: 16),
-                      _buildActionButton(context, Icons.link, 'رمز الدعوة', () {
-                        _generateInviteCode(context, conversation);
-                      }),
-                      if (canManage) ...[
-                        const SizedBox(width: 16),
-                        _buildActionButton(context, Icons.person_add, 'إضافة أعضاء', () {
-                          _showAddMembers(context, conversation);
-                        }),
-                      ],
+                      Row(
+                        children: [
+                          if (canManage)
+                            _buildActionButton(context, Icons.edit, 'إعادة تسمية', () {
+                              _showRenameDialog(context, conversation);
+                            }),
+                          if (canManage) const SizedBox(width: 16),
+                          _buildActionButton(context, Icons.link, 'رمز الدعوة', () {
+                            _generateInviteCode(context, conversation);
+                          }),
+                          if (canManage) ...[
+                            const SizedBox(width: 16),
+                            _buildActionButton(context, Icons.person_add, 'إضافة أعضاء', () {
+                              _showAddMembers(context, conversation);
+                            }),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          _buildActionButton(context, Icons.delete_forever, 'حذف المجموعة', () {
+                            _showDeleteGroupDialog(context, conversation);
+                          }, isDestructive: true),
+                        ],
+                      ),
                     ],
                   );
                 },
@@ -204,25 +216,25 @@ class GroupInfoSheet extends StatelessWidget {
     );
   }
 
-  Widget _buildActionButton(BuildContext context, IconData icon, String label, VoidCallback onTap) {
+  Widget _buildActionButton(BuildContext context, IconData icon, String label, VoidCallback onTap, {bool isDestructive = false}) {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: AppTheme.cardColor,
+            color: isDestructive ? AppTheme.errorColor.withValues(alpha: 0.1) : AppTheme.cardColor,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             children: [
-              Icon(icon, color: AppTheme.primaryColor, size: 24),
+              Icon(icon, color: isDestructive ? AppTheme.errorColor : AppTheme.primaryColor, size: 24),
               const SizedBox(height: 4),
               Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 12,
-                  color: AppTheme.textSecondary,
+                  color: isDestructive ? AppTheme.errorColor : AppTheme.textSecondary,
                 ),
               ),
             ],
@@ -398,6 +410,50 @@ class GroupInfoSheet extends StatelessWidget {
               );
             },
           ),
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteGroupDialog(BuildContext context, Conversation conversation) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: AppTheme.surfaceColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            'حذف المجموعة',
+            style: TextStyle(color: AppTheme.errorColor),
+          ),
+          content: const Text(
+            'هل أنت متأكد من حذف هذه المجموعة؟ لا يمكن التراجع عن هذا الإجراء.',
+            style: TextStyle(color: AppTheme.textSecondary),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إلغاء', style: TextStyle(color: AppTheme.textMuted)),
+            ),
+            TextButton(
+              onPressed: () async {
+                try {
+                  await context.read<ChatProvider>().deleteConversation(conversation.id);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (context.mounted) Navigator.of(context).popUntil((route) => route.isFirst);
+                } catch (e) {
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('خطأ: $e')),
+                    );
+                  }
+                }
+              },
+              child: const Text('حذف', style: TextStyle(color: AppTheme.errorColor)),
+            ),
+          ],
         ),
       ),
     );
