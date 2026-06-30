@@ -21,6 +21,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
   final _viewableKey = GlobalKey<SliverAnimatedListState>();
   bool _isLoadingMore = false;
+  Message? _repliedToMessage;
 
   @override
   void initState() {
@@ -160,6 +161,9 @@ class _ChatScreenState extends State<ChatScreen> {
               // Chat input
               ChatInput(
                 conversationId: widget.conversation.id,
+                repliedTo: _repliedToMessage,
+                participants: widget.conversation.participants,
+                onCancelReply: () => setState(() => _repliedToMessage = null),
               ),
             ],
           );
@@ -251,7 +255,7 @@ class _ChatScreenState extends State<ChatScreen> {
             message: message,
             isMine: isMine,
             onReply: (msg) {
-              // Set reply in ChatInput
+              setState(() => _repliedToMessage = msg);
             },
             onDelete: (msg) => _showDeleteOptions(msg),
             onReact: (msg, emoji) => chat.addReaction(msg.id, emoji),

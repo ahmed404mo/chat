@@ -19,6 +19,7 @@ dependencies:
   pusher_channels_flutter: ^2.2.0
   file_picker: ^8.0.0
   audioplayers: ^6.1.0
+  record: ^6.1.2
   photo_view: ^0.15.0
   emoji_picker_flutter: ^3.1.0
   firebase_core: ^3.1.0

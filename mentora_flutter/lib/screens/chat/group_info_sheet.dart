@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../config/theme.dart';
 import '../../models/conversation.dart';
+import '../../models/user.dart' as model;
 import '../../providers/chat_provider.dart';
+import '../../services/chat_service.dart';
+import '../../services/user_service.dart';
 
 class GroupInfoSheet extends StatelessWidget {
   final Conversation conversation;
@@ -80,20 +84,29 @@ class GroupInfoSheet extends StatelessWidget {
             // Actions
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: Row(
-                children: [
-                  _buildActionButton(context, Icons.edit, 'إعادة تسمية', () {
-                    _showRenameDialog(context);
-                  }),
-                  const SizedBox(width: 16),
-                  _buildActionButton(context, Icons.link, 'رمز الدعوة', () {
-                    _generateInviteCode(context);
-                  }),
-                  const SizedBox(width: 16),
-                  _buildActionButton(context, Icons.person_add, 'إضافة أعضاء', () {
-                    // Add members
-                  }),
-                ],
+              child: Builder(
+                builder: (ctx) {
+                  final auth = ctx.watch<AuthProvider>();
+                  final canManage = auth.user?.canManageConversations ?? false;
+                  return Row(
+                    children: [
+                      if (canManage)
+                        _buildActionButton(context, Icons.edit, 'إعادة تسمية', () {
+                          _showRenameDialog(context);
+                        }),
+                      if (canManage) const SizedBox(width: 16),
+                      _buildActionButton(context, Icons.link, 'رمز الدعوة', () {
+                        _generateInviteCode(context);
+                      }),
+                      if (canManage) ...[
+                        const SizedBox(width: 16),
+                        _buildActionButton(context, Icons.person_add, 'إضافة أعضاء', () {
+                          _showAddMembers(context);
+                        }),
+                      ],
+                    ],
+                  );
+                },
               ),
             ),
 
@@ -250,11 +263,25 @@ class GroupInfoSheet extends StatelessWidget {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
+                      onPressed: () async {
                         if (controller.text.trim().isNotEmpty) {
-                          context.read<ChatProvider>();
-                          // TODO: rename conversation
-                          Navigator.pop(ctx);
+                          try {
+                            await ChatService().renameConversation(
+                              conversation.id,
+                              controller.text.trim(),
+                            );
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (context.mounted) {
+                              context.read<ChatProvider>().loadConversations();
+                            }
+                          } catch (e) {
+                            if (ctx.mounted) Navigator.pop(ctx);
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('خطأ: $e')),
+                              );
+                            }
+                          }
                         }
                       },
                       child: const Text('حفظ'),
@@ -263,6 +290,106 @@ class GroupInfoSheet extends StatelessWidget {
                 ],
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddMembers(BuildContext context) {
+    final chatService = ChatService();
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Dialog(
+          backgroundColor: AppTheme.surfaceColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          child: FutureBuilder<List<model.User>>(
+            future: UserService().getAllUsers(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Padding(
+                  padding: EdgeInsets.all(40),
+                  child: CircularProgressIndicator(),
+                );
+              }
+              final allUsers = snapshot.data ?? [];
+              final existingIds = conversation.participants.map((p) => p.id).toSet();
+              final available = allUsers.where((u) => !existingIds.contains(u.id)).toList();
+
+              if (available.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.people, size: 48, color: AppTheme.textMuted),
+                      const SizedBox(height: 16),
+                      const Text('جميع المستخدمين موجودون بالفعل',
+                          style: TextStyle(color: AppTheme.textPrimary)),
+                      const SizedBox(height: 16),
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إغلاق')),
+                    ],
+                  ),
+                );
+              }
+
+              return ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text('إضافة أعضاء', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppTheme.textPrimary)),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: ListView.separated(
+                          itemCount: available.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (_, i) {
+                            final u = available[i];
+                            return ListTile(
+                              leading: CircleAvatar(
+                                radius: 18,
+                                backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.2),
+                                child: Text(u.initials, style: const TextStyle(color: AppTheme.primaryColor, fontSize: 12)),
+                              ),
+                              title: Text(u.name, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 14)),
+                              subtitle: Text(u.role, style: const TextStyle(color: AppTheme.textMuted, fontSize: 12)),
+                              trailing: ElevatedButton(
+                                onPressed: () async {
+                                  try {
+                                    await chatService.addMembers(conversation.id, [u.id]);
+                                    if (ctx.mounted) Navigator.pop(ctx);
+                                    if (context.mounted) {
+                                      context.read<ChatProvider>().loadConversations();
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('تمت إضافة ${u.name}')),
+                                      );
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('خطأ: $e')),
+                                      );
+                                    }
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6)),
+                                child: const Text('إضافة', style: TextStyle(fontSize: 12)),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إغلاق')),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
