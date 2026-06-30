@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:record/record.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../config/theme.dart';
 import '../../models/conversation.dart';
 import '../../models/user.dart';
@@ -288,10 +289,9 @@ class _ChatInputState extends State<ChatInput> {
       }
     } else {
       try {
-        final hasPermission = await _audioRecorder.hasPermission();
-        if (!hasPermission) {
-          final granted = await _audioRecorder.requestPermission();
-          if (!granted) {
+        if (!await _audioRecorder.hasPermission()) {
+          final status = await Permission.microphone.request();
+          if (!status.isGranted) {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('يرجى السماح بتسجيل الصوت من الإعدادات')),
