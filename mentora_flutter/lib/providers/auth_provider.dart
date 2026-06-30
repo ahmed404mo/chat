@@ -80,6 +80,13 @@ class AuthProvider extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> refreshUser() async {
+    try {
+      _user = await _authService.getCurrentUser();
+      notifyListeners();
+    } catch (_) {}
+  }
+
   void clearError() {
     _error = null;
     notifyListeners();

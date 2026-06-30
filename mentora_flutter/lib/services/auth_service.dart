@@ -31,7 +31,8 @@ class AuthService {
 
   Future<User> getCurrentUser() async {
     final data = await _api.get('/users/me') as Map<String, dynamic>;
-    return User.fromJson(data);
+    final userData = data['user'] as Map<String, dynamic>;
+    return User.fromJson(userData);
   }
 
   Future<void> logout() async {

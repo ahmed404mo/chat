@@ -1,11 +1,22 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/theme_provider.dart';
+import '../../providers/settings_provider.dart';
+import '../../services/user_service.dart';
 import '../auth/auth_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
@@ -65,20 +76,23 @@ class ProfileScreen extends StatelessWidget {
                     Positioned(
                       bottom: 0,
                       right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: AppTheme.cardColor,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: AppTheme.backgroundColor,
-                            width: 3,
+                      child: GestureDetector(
+                        onTap: () => _pickAndUploadAvatar(context),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppTheme.cardColor,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: AppTheme.backgroundColor,
+                              width: 3,
+                            ),
                           ),
-                        ),
-                        child: const Icon(
-                          Icons.camera_alt,
-                          size: 18,
-                          color: AppTheme.primaryColor,
+                          child: const Icon(
+                            Icons.camera_alt,
+                            size: 18,
+                            color: AppTheme.primaryColor,
+                          ),
                         ),
                       ),
                     ),
@@ -148,20 +162,38 @@ class ProfileScreen extends StatelessWidget {
                   onTap: () {},
                 ),
                 const Divider(height: 1, indent: 56),
-                _buildSettingItem(
-                  context,
-                  icon: Icons.notifications_outlined,
-                  title: 'الإشعارات',
-                  subtitle: 'مفعلة',
-                  onTap: () {},
+                Consumer<SettingsProvider>(
+                  builder: (context, settings, _) {
+                    return _buildSettingItem(
+                      context,
+                      icon: Icons.notifications_outlined,
+                      title: 'الإشعارات',
+                      subtitle: settings.notificationsEnabled ? 'مفعلة' : 'معطلة',
+                      trailing: Switch(
+                        value: settings.notificationsEnabled,
+                        onChanged: (_) => settings.toggleNotifications(),
+                        activeColor: AppTheme.primaryColor,
+                      ),
+                      onTap: () => settings.toggleNotifications(),
+                    );
+                  },
                 ),
                 const Divider(height: 1, indent: 56),
-                _buildSettingItem(
-                  context,
-                  icon: Icons.dark_mode,
-                  title: 'الوضع الداكن',
-                  subtitle: 'مفعل',
-                  onTap: () {},
+                Consumer<ThemeProvider>(
+                  builder: (context, theme, _) {
+                    return _buildSettingItem(
+                      context,
+                      icon: Icons.dark_mode,
+                      title: 'الوضع الداكن',
+                      subtitle: theme.isDark ? 'مفعل' : 'معطل',
+                      trailing: Switch(
+                        value: theme.isDark,
+                        onChanged: (_) => theme.toggle(),
+                        activeColor: AppTheme.primaryColor,
+                      ),
+                      onTap: () => theme.toggle(),
+                    );
+                  },
                 ),
 
                 const SizedBox(height: 32),
@@ -247,6 +279,7 @@ class ProfileScreen extends StatelessWidget {
     required String title,
     required String subtitle,
     required VoidCallback onTap,
+    Widget? trailing,
   }) {
     return ListTile(
       leading: Container(
@@ -271,7 +304,7 @@ class ProfileScreen extends StatelessWidget {
           color: AppTheme.textMuted,
         ),
       ),
-      trailing: const Icon(
+      trailing: trailing ?? const Icon(
         Icons.chevron_left,
         color: AppTheme.textMuted,
       ),
@@ -344,6 +377,30 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _pickAndUploadAvatar(BuildContext context) async {
+    final result = await FilePicker.platform.pickFiles(type: FileType.image);
+    if (result == null || result.files.single.path == null) return;
+
+    final file = File(result.files.single.path!);
+    setState(() {});
+    try {
+      final userService = UserService();
+      await userService.uploadAvatar(file);
+      await context.read<AuthProvider>().refreshUser();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('تم تحديث الصورة الشخصية')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('خطأ في رفع الصورة: $e')),
+        );
+      }
+    }
   }
 
   String _getRoleName(String role) {

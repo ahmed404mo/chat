@@ -6,8 +6,9 @@ class ChatService {
   final ApiService _api = ApiService();
 
   Future<List<Conversation>> getConversations() async {
-    final data = await _api.get('/chat/conversations') as List<dynamic>;
-    return data.map((e) => Conversation.fromJson(e as Map<String, dynamic>)).toList();
+    final data = await _api.get('/chat/conversations') as Map<String, dynamic>;
+    final list = data['conversations'] as List<dynamic>;
+    return list.map((e) => Conversation.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<Conversation> createConversation({
@@ -18,9 +19,9 @@ class ChatService {
     final data = await _api.post('/chat/conversations', body: {
       'title': title,
       'isGroup': isGroup,
-      if (memberIds != null) 'memberIds': memberIds,
+      if (memberIds != null) 'participantIds': memberIds,
     }) as Map<String, dynamic>;
-    return Conversation.fromJson(data);
+    return Conversation.fromJson(data['conversation'] as Map<String, dynamic>);
   }
 
   Future<void> renameConversation(String id, String title) async {
@@ -75,7 +76,7 @@ class ChatService {
       data = await _api.post('/chat/messages', body: body);
     }
 
-    return Message.fromJson(data as Map<String, dynamic>);
+    return Message.fromJson(data['message'] as Map<String, dynamic>);
   }
 
   Future<void> editMessage(String messageId, String content) async {
@@ -125,7 +126,7 @@ class ChatService {
       'code': code,
     });
     if (data is Map<String, dynamic>) {
-      return Conversation.fromJson(data);
+    return Conversation.fromJson(data['conversation'] as Map<String, dynamic>);
     }
     return null;
   }

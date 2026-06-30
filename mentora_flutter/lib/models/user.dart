@@ -23,7 +23,7 @@ class User {
     return User(
       id: json['id'] as String,
       name: json['name'] as String,
-      email: json['email'] as String,
+      email: json['email'] as String? ?? '',
       role: json['role'] as String? ?? 'user',
       avatarUrl: json['avatarUrl'] as String?,
       createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt'] as String) : DateTime.now(),

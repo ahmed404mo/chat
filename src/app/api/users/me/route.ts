@@ -2,6 +2,21 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getUserFromToken } from "@/lib/auth";
 
+export async function GET(req: Request) {
+  const user = getUserFromToken(req);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { id: true, name: true, email: true, role: true, avatarUrl: true, createdAt: true, updatedAt: true },
+  });
+  if (!dbUser) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+  return NextResponse.json({ user: dbUser });
+}
+
 export async function PATCH(req: Request) {
   const user = getUserFromToken(req);
   if (!user) {

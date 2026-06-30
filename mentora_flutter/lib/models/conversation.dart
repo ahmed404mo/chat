@@ -40,7 +40,8 @@ class Conversation {
           ? Message.fromJson(json['lastMessage'] as Map<String, dynamic>)
           : null,
       participants: (json['participants'] as List<dynamic>?)
-              ?.map((e) => User.fromJson(e as Map<String, dynamic>))
+              ?.map((e) =>
+                  User.fromJson((e as Map<String, dynamic>)['user'] as Map<String, dynamic>))
               .toList() ??
           [],
       inviteCodes: (json['inviteCodes'] as List<dynamic>?)
