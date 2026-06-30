@@ -55,6 +55,8 @@ jobs:
           cp -r mentora_flutter/l10n /tmp/mentora_build/ 2>/dev/null || true
           cp mentora_flutter/android/app/google-services.json /tmp/mentora_build/android/app/google-services.json 2>/dev/null || true
           cp mentora_flutter/android/app/build.gradle /tmp/mentora_build/android/app/build.gradle
+          cp mentora_flutter/android/build.gradle /tmp/mentora_build/android/build.gradle
+          cp mentora_flutter/android/settings.gradle /tmp/mentora_build/android/settings.gradle
           sed -i 's/minSdkVersion="[0-9]*"/minSdkVersion="23"/' /tmp/mentora_build/android/app/src/debug/AndroidManifest.xml 2>/dev/null || true
           echo "=== Verifying ==="
           grep -n 'minSdk' /tmp/mentora_build/android/app/build.gradle
