@@ -9,7 +9,7 @@ const Chat = (() => {
   let mediaRecorder = null;
   let audioChunks = [];
   let users = [];
-  const userId = () => (API.getUser() || {})._id || '';
+  const userId = () => (API.getUser() || {}).id || '';
 
   // ── Conversations ──
   async function loadConversations() {
@@ -32,13 +32,14 @@ const Chat = (() => {
     }
     const uid = userId();
     list.innerHTML = conversations.map(c => {
-      const title = c.isGroup ? c.title : (c.participants||[]).find(p => p.id !== uid)?.name || c.title;
-      const last = c.lastMessage;
+      const part = (c.participants||[]).find(p => p.user?.id !== uid);
+      const title = c.isGroup ? c.title : part?.user?.name || c.title;
+      const last = c.messages?.[0];
       let preview = '';
       if (last) {
         if (last.attachments?.length) {
           const a = last.attachments[0];
-          preview = a.isAudio ? '🎤 رسالة صوتية' : a.isImage ? '🖼️ صورة' : '📎 ملف';
+          preview = a.mimeType?.startsWith('audio/') ? '🎤 رسالة صوتية' : a.mimeType?.startsWith('image/') ? '🖼️ صورة' : '📎 ملف';
         } else {
           preview = last.content || '';
         }
@@ -63,9 +64,10 @@ const Chat = (() => {
     currentConversation = conversations.find(c => c.id === id) || { id };
     App.showScreen('chat-screen');
     const uid = userId();
+    const part = (currentConversation.participants||[]).find(p => p.user?.id !== uid);
     const title = currentConversation.isGroup
       ? currentConversation.title
-      : (currentConversation.participants||[]).find(p => p.id !== uid)?.name || currentConversation.title;
+      : part?.user?.name || currentConversation.title;
     document.querySelector('#chat-title').textContent = title || 'المجموعة';
     document.getElementById('chat-avatar').textContent = (title||'G')[0].toUpperCase();
     document.getElementById('chat-typing').textContent = '';
@@ -134,8 +136,9 @@ const Chat = (() => {
   function renderAttachments(attachments) {
     if (!attachments?.length) return '';
     return attachments.map(a => {
-      if (a.isImage) return `<img class="attachment-img" src="${esc(a.url)}" onclick="event.stopPropagation();App.previewImage('${esc(a.url)}')"/>`;
-      if (a.isAudio) {
+      const mime = (a.mimeType||'').toLowerCase();
+      if (mime.startsWith('image/')) return `<img class="attachment-img" src="${esc(a.url)}" onclick="event.stopPropagation();App.previewImage('${esc(a.url)}')"/>`;
+      if (mime.startsWith('audio/')) {
         return `<div class="audio-attachment">
           <span class="audio-play-btn" onclick="event.stopPropagation();Chat.playAudio(this,'${esc(a.url)}')">▶</span>
           <div class="audio-progress"><div class="audio-progress-bar"><div class="audio-progress-fill" style="width:0%"></div></div>
@@ -151,7 +154,7 @@ const Chat = (() => {
     reactions.forEach(r => {
       if (!map[r.emoji]) map[r.emoji] = { emoji: r.emoji, count: 0, users: [] };
       map[r.emoji].count++;
-      map[r.emoji].users.push(r.userId);
+      map[r.emoji].users.push(r.user?.id || r.userId);
     });
     return Object.values(map);
   }
@@ -440,7 +443,7 @@ const Chat = (() => {
       html += `<div class="group-members-section">
         <div class="group-members-header"><span>المشاركون</span><span>${participants.length}</span></div>`;
       participants.forEach(p => {
-        const name = p.name || p.email || p.id || '';
+        const name = p.user?.name || p.name || p.id || '';
         html += `<div class="group-member">
           <div class="group-member-avatar">${name[0]?.toUpperCase()||'?'}</div>
           <div class="group-member-name">${esc(name)}</div>

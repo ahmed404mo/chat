@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#111827"/>
   <title>Mentora</title>
   <link rel="stylesheet" href="css/style.css"/>
-  <script>var API_BASE = 'https://chat-five-rho-38.vercel.app/api';</script>
+  <script>var API_BASE = (location.hostname === 'localhost' || location.hostname === '127.0.0.1') ? 'http://localhost:3001/api' : 'https://chat-five-rho-38.vercel.app/api';</script>
   <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
   <script src="js/api.js"></script>
   <script src="js/pusher.js"></script>
@@ -41,8 +41,12 @@
             </div>
             <div class="form-group">
               <label for="login-password">كلمة المرور</label>
-              <input id="login-password" type="password" class="form-input" placeholder="أدخل كلمة المرور" required/>
-            </div>
+              <div class="password-wrapper">
+                <input id="login-password" type="password" class="form-input" placeholder="أدخل كلمة المرور" required/>
+                <button type="button" class="toggle-password" onclick="App.togglePassword('login-password',this)" tabindex="-1">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             <div id="login-error" class="error-msg"></div>
             <button type="submit" class="btn btn-primary btn-full">تسجيل الدخول</button>
           </form>
@@ -71,8 +75,12 @@
             </div>
             <div class="form-group">
               <label for="reg-password">كلمة المرور</label>
-              <input id="reg-password" type="password" class="form-input" placeholder="أدخل كلمة المرور" required/>
-            </div>
+              <div class="password-wrapper">
+                <input id="reg-password" type="password" class="form-input" placeholder="أدخل كلمة المرور" required/>
+                <button type="button" class="toggle-password" onclick="App.togglePassword('reg-password',this)" tabindex="-1">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
             <div id="register-error" class="error-msg"></div>
             <button type="submit" class="btn btn-primary btn-full">إنشاء حساب</button>
           </form>

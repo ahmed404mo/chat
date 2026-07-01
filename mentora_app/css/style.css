@@ -27,6 +27,10 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .form-input{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;color:var(--text);font-size:15px;outline:none;transition:border-color .2s}
 .form-input:focus{border-color:var(--primary)}
 .form-input::placeholder{color:var(--text-muted)}
+.password-wrapper{position:relative;display:flex;align-items:center}
+.password-wrapper .form-input{flex:1;padding-left:40px}
+.toggle-password{position:absolute;left:8px;background:none;border:none;color:var(--text-muted);cursor:pointer;padding:6px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.toggle-password:active{background:rgba(255,255,255,.1)}
 .error-msg{color:var(--error);font-size:12px;text-align:center;min-height:18px}
 
 /* Buttons */
