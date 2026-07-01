@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     const token = jwt.sign(
       { id: user.id, name: user.name, email: user.email, role: user.role, avatarUrl: user.avatarUrl },
       process.env.USER_TOKEN_SECRET_KEY!,
-      { expiresIn: process.env.ACCESS_EXPIRES_IN || '10y' } as any
+      { expiresIn: parseInt(process.env.ACCESS_EXPIRES_IN || '31536000', 10) } as any
     );
 
     return NextResponse.json({
