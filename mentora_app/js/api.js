@@ -37,6 +37,7 @@ const API = (() => {
     }
     let res;
     const url = `${BASE}${path}`;
+    if (path === '/chat/conversations') console.log('→ sending token:', token?.substring(0,30)+'...');
     try {
       res = await fetch(url, opts);
     } catch (e) {
@@ -51,6 +52,7 @@ const API = (() => {
     }
     if (!res.ok) {
       if (res.status === 401 && !isPublicEndpoint(path)) {
+        console.log('✕ 401:', path, 'token was:', token?.substring(0,30)+'...');
         setToken(null); setUser(null);
         if (typeof Chat !== 'undefined' && Chat.logout) Chat.logout();
         else if (typeof Auth !== 'undefined' && Auth.showLogin) Auth.showLogin();

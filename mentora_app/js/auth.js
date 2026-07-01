@@ -88,7 +88,10 @@ const Auth = (() => {
     btn.disabled = true; btn.textContent = 'جاري التحميل...';
     try {
       const data = await API.post('/auth/login', { email, password });
+      console.log('✓ login token:', data.token?.substring(0,30)+'...');
+      console.log('✓ login user:', data.user?.email);
       API.setToken(data.token); API.setUser(data.user);
+      console.log('✓ token saved:', API.getToken()?.substring(0,30)+'...');
       finishLogin();
     } catch (e) { console.log('✕ login error', e.message); errEl.textContent = e.message; btn.disabled = false; btn.textContent = 'تسجيل الدخول'; }
   }
