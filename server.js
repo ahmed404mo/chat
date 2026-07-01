@@ -20,17 +20,9 @@ const prisma = new PrismaClient({ adapter });
 
 app.prepare().then(() => {
   const server = createServer((req, res) => {
-    const origins = (process.env.ORIGINS || "http://localhost:3000").split(",").map(s => s.trim());
-    const origin = req.headers.origin;
-    const corsOrigin = origins.includes("*")
-      ? "*"
-      : origins.includes(origin)
-        ? origin
-        : "";
-
+    res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,DELETE,OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
-    if (corsOrigin) res.setHeader("Access-Control-Allow-Origin", corsOrigin);
 
     if (req.method === "OPTIONS") {
       res.writeHead(204);
