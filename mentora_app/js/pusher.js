@@ -8,7 +8,7 @@ const PusherManager = (() => {
       cluster: 'eu',
       authorizer: (channel) => ({
         authorize: (socketId, callback) => {
-          fetch(`${API.BASE}/chat/pusher/auth`, {
+          fetch(`${API.BASE}/pusher/auth`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
