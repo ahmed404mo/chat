@@ -32,8 +32,9 @@ const API = (() => {
       }
     }
     let res;
+    const url = `${BASE}${path}`;
     try {
-      res = await fetch(`${BASE}${path}`, opts);
+      res = await fetch(url, opts);
     } catch (e) {
       throw new Error('تعذر الاتصال بالخادم');
     }
@@ -45,6 +46,13 @@ const API = (() => {
       throw new Error('خطأ في استجابة الخادم');
     }
     if (!res.ok) {
+      if (res.status === 401) {
+        setToken(null); setUser(null);
+        if (typeof Chat !== 'undefined' && Chat.logout) Chat.logout();
+        else if (typeof Auth !== 'undefined' && Auth.showLogin) Auth.showLogin();
+        else window.location.hash = '#login';
+        throw new Error('انتهت الجلسة');
+      }
       const msg = data?.message || data?.error || `خطأ ${res.status}`;
       throw new Error(msg);
     }

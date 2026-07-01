@@ -30,13 +30,13 @@ const PusherManager = (() => {
   function subscribe(conversationId) {
     if (channels[conversationId]) return;
     const channel = pusher.subscribe(`presence-conversation-${conversationId}`);
-    channel.bind('onMessageReceived', (data) => Chat.handleNewMessage(data));
-    channel.bind('onMessageEdited', (data) => Chat.handleMessageEdited(data));
-    channel.bind('onMessageDeleted', (data) => Chat.handleMessageDeleted(data));
-    channel.bind('onReactionAdded', (data) => Chat.handleReactionUpdated(data));
-    channel.bind('onReactionRemoved', (data) => Chat.handleReactionUpdated(data));
-    channel.bind('onTyping', (data) => Chat.handleTyping(data));
-    channel.bind('onRead', (data) => Chat.handleRead(data));
+    channel.bind('onMessageReceived', (data) => { try { Chat.onNewMsg(data); } catch(e) {} });
+    channel.bind('onMessageEdited', (data) => { try { Chat.onEdit(data); } catch(e) {} });
+    channel.bind('onMessageDeleted', (data) => { try { Chat.onDel(data); } catch(e) {} });
+    channel.bind('onReactionAdded', (data) => { try { Chat.onReact(data); } catch(e) {} });
+    channel.bind('onReactionRemoved', (data) => { try { Chat.onReact(data); } catch(e) {} });
+    channel.bind('onTyping', (data) => { try { Chat.onTyping(data); } catch(e) {} });
+    channel.bind('onRead', (data) => { try { Chat.onRead(data); } catch(e) {} });
     channels[conversationId] = channel;
   }
 
