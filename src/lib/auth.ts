@@ -19,7 +19,9 @@ export function getUserFromToken(req: Request): JwtPayload | null {
       auth.slice(7),
       process.env.USER_TOKEN_SECRET_KEY!
     ) as JwtPayload;
-  } catch {
+  } catch (err) {
+    console.error('[getUserFromToken] verify error:', err instanceof Error ? err.message : err);
+    console.error('[getUserFromToken] key prefix:', process.env.USER_TOKEN_SECRET_KEY?.substring(0,3)+'...');
     return null;
   }
 }

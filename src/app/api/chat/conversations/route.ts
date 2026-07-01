@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getUserFromToken, canManageChats } from "@/lib/auth";
 
 export async function GET(req: Request) {
+  console.log('[GET conversations] auth header:', req.headers.get("authorization")?.substring(0,40)+'...');
   const user = getUserFromToken(req);
   
   // التعديل هنا: التأكد من وجود اليوزر ووجود الـ ID بتاعه
