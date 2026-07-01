@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#111827"/>
+  <title>Mentora</title>
+  <link rel="stylesheet" href="css/style.css"/>
+  <script>var API_BASE = 'https://chat-five-rho-38.vercel.app/api';</script>
+  <script src="https://js.pusher.com/8.2.0/pusher.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/pusher.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Splash / Loading -->
+    <div id="splash-screen" class="screen active">
+      <div class="splash-content">
+        <div class="splash-icon">M</div>
+        <h1>Mentora</h1>
+        <div class="spinner"></div>
+      </div>
+    </div>
+
+    <!-- Login -->
+    <div id="login-screen" class="screen">
+      <div class="auth-container">
+        <div class="auth-card">
+          <div class="auth-header">
+            <div class="auth-logo">M</div>
+            <h2>تسجيل الدخول</h2>
+            <p>أهلاً بك في Mentora</p>
+          </div>
+          <form id="login-form" class="auth-form">
+            <div class="form-group">
+              <label for="login-email">البريد الإلكتروني</label>
+              <input id="login-email" type="email" class="form-input" placeholder="أدخل بريدك الإلكتروني" required/>
+            </div>
+            <div class="form-group">
+              <label for="login-password">كلمة المرور</label>
+              <input id="login-password" type="password" class="form-input" placeholder="أدخل كلمة المرور" required/>
+            </div>
+            <div id="login-error" class="error-msg"></div>
+            <button type="submit" class="btn btn-primary btn-full">تسجيل الدخول</button>
+          </form>
+          <p class="auth-switch">ليس لديك حساب؟ <a href="#" onclick="App.showRegister()">إنشاء حساب</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Register -->
+    <div id="register-screen" class="screen">
+      <div class="auth-container">
+        <div class="auth-card">
+          <div class="auth-header">
+            <div class="auth-logo">M</div>
+            <h2>إنشاء حساب</h2>
+            <p>انضم إلى Mentora</p>
+          </div>
+          <form id="register-form" class="auth-form">
+            <div class="form-group">
+              <label for="reg-name">الاسم</label>
+              <input id="reg-name" type="text" class="form-input" placeholder="الاسم الكامل" required/>
+            </div>
+            <div class="form-group">
+              <label for="reg-email">البريد الإلكتروني</label>
+              <input id="reg-email" type="email" class="form-input" placeholder="أدخل بريدك الإلكتروني" required/>
+            </div>
+            <div class="form-group">
+              <label for="reg-password">كلمة المرور</label>
+              <input id="reg-password" type="password" class="form-input" placeholder="أدخل كلمة المرور" required/>
+            </div>
+            <div id="register-error" class="error-msg"></div>
+            <button type="submit" class="btn btn-primary btn-full">إنشاء حساب</button>
+          </form>
+          <p class="auth-switch">لديك حساب؟ <a href="#" onclick="App.showLogin()">تسجيل الدخول</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chats List -->
+    <div id="chats-screen" class="screen">
+      <div class="app-bar">
+        <div class="app-bar-title">Mentora</div>
+        <div class="app-bar-actions">
+          <button class="icon-btn" onclick="App.showJoinModal()" title="انضم برمز">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13 12H3"/></svg>
+          </button>
+          <button class="icon-btn" onclick="App.showCreateChat()" title="مجموعة جديدة">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button class="icon-btn" onclick="Auth.logout()" title="تسجيل الخروج">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="chats-loading" class="loading-indicator"><div class="spinner"></div></div>
+      <div id="chats-list" class="chats-list"></div>
+    </div>
+
+    <!-- Chat Room -->
+    <div id="chat-screen" class="screen">
+      <div class="app-bar">
+        <button class="icon-btn" onclick="App.backToChats()">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+        </button>
+        <div class="app-bar-chat-info" onclick="App.showGroupInfo()">
+          <div id="chat-avatar" class="chat-bar-avatar"></div>
+          <div>
+            <div id="chat-title" class="chat-bar-title"></div>
+            <div id="chat-typing" class="chat-bar-typing"></div>
+          </div>
+        </div>
+        <div class="app-bar-actions">
+          <button class="icon-btn" onclick="App.showGroupInfo()">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+          </button>
+        </div>
+      </div>
+      <div id="messages-container" class="messages-container">
+        <div id="messages-loading" class="loading-indicator"><div class="spinner"></div></div>
+        <div id="messages-list" class="messages-list"></div>
+      </div>
+      <div id="reply-preview" class="reply-preview" style="display:none">
+        <div class="reply-info">
+          <span id="reply-label" class="reply-label"></span>
+          <span id="reply-text" class="reply-text"></span>
+        </div>
+        <button class="icon-btn-sm" onclick="App.cancelReply()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="file-preview" class="reply-preview" style="display:none">
+        <div class="reply-info">
+          <span id="file-preview-icon" class="reply-label"></span>
+          <span id="file-preview-name" class="reply-text"></span>
+        </div>
+        <button class="icon-btn-sm" onclick="App.clearFile()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="chat-input-bar">
+        <button class="icon-btn" onclick="App.pickFile()" title="إرفاق ملف">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </button>
+          <div class="input-wrapper">
+            <textarea id="msg-input" class="msg-input" placeholder="اكتب رسالة..." rows="1" oninput="App.onInput()" onkeydown="App.onKeyDown(event)"></textarea>
+          </div>
+          <div id="send-btn-area">
+            <button id="record-btn" class="icon-btn icon-btn-primary" onclick="App.toggleRecord()" title="تسجيل صوتي">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v3"/></svg>
+            </button>
+            <button id="send-btn" class="icon-btn icon-btn-send" onclick="App.sendMessage()" style="display:none" title="إرسال">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Group Info Sheet -->
+    <div id="group-info-overlay" class="overlay" onclick="App.closeGroupInfo()">
+      <div class="sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <div id="group-info-content"></div>
+      </div>
+    </div>
+
+    <!-- Create Chat Modal -->
+    <div id="create-chat-overlay" class="overlay" onclick="App.closeCreateChat()">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>مجموعة جديدة</h3>
+          <button class="icon-btn-sm" onclick="App.closeCreateChat()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <input id="new-group-name" class="form-input" placeholder="اسم المجموعة"/>
+          </div>
+          <div id="members-list" class="members-pick-list"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-primary btn-full" onclick="App.createGroup()">إنشاء</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Join Modal -->
+    <div id="join-overlay" class="overlay" onclick="App.closeJoinModal()">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>انضم برمز الدعوة</h3>
+          <button class="icon-btn-sm" onclick="App.closeJoinModal()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <input id="join-code" class="form-input" placeholder="أدخل رمز الدعوة"/>
+          </div>
+          <div id="join-error" class="error-msg"></div>
+          <button class="btn btn-primary btn-full" onclick="App.joinViaCode()">انضمام</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Audio Player Overlay -->
+    <div id="audio-player-overlay" class="overlay" onclick="App.closeAudioPlayer()">
+      <div class="sheet" onclick="event.stopPropagation()">
+        <div class="sheet-handle"></div>
+        <div id="audio-player-content" class="audio-player-content"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast"></div>
+</body>
+</html>

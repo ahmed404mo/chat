@@ -3,12 +3,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.company.platform',
   appName: 'Mentora',
-  webDir: 'out',
-
-  server: {
-    url: 'https://chat-five-rho-38.vercel.app',
-    cleartext: false,
-  },
+  webDir: 'mentora_app',
 
   android: {
     buildOptions: {
