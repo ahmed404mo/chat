@@ -8,9 +8,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const formData = await req.formData();
-  const socketId = formData.get("socket_id") as string;
-  const channelName = formData.get("channel_name") as string;
+  const body = await req.json();
+  const socketId = body.socket_id as string;
+  const channelName = body.channel_name as string;
 
   if (!socketId || !channelName) {
     return NextResponse.json({ error: "Missing socket_id or channel_name" }, { status: 400 });
