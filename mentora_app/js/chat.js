@@ -40,7 +40,7 @@ const Chat = (() => {
 
   function render(html) {
     document.body.innerHTML = '';
-    document.body.style.cssText = 'margin:0;height:100%;background:' + C.bg + ';color:' + C.text + ';font-family:sans-serif;direction:rtl;overflow:hidden';
+    document.body.style.cssText = 'margin:0;height:100%;background:' + C.bg + ';color:' + C.text + ';font-family:sans-serif;direction:rtl;overflow:hidden;-webkit-user-select:none;user-select:none';
     document.body.innerHTML = html;
     if (!el('ispin')) {
       const s = document.createElement('style');
@@ -220,21 +220,21 @@ const Chat = (() => {
           </div>
           <button style="background:none;border:none;color:${C.muted};padding:4px;cursor:pointer" onclick="Chat.cancelReply()">✕</button>
         </div>
-        <div id="fprev" style="display:none;align-items:center;gap:10px;padding:8px 16px;background:${C.card};border-bottom:1px solid ${C.border}">
-          <span id="fpplay" style="display:none;width:32px;height:32px;border-radius:50%;background:${C.primary};align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;color:#fff" onclick="Chat.playPreview()" title="استماع">${I.play}</span>
-          <div style="flex:1;min-width:0">
-            <div id="fplabel" style="font-size:11px;color:#60a5fa;font-weight:600"></div>
-            <div id="fpname" style="font-size:12px;color:${C.muted};overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
-          </div>
-          <span id="fpdur" style="display:none;font-size:12px;color:${C.muted};direction:ltr"></span>
-          <button style="background:none;border:none;color:${C.muted};padding:4px;cursor:pointer" onclick="Chat.clearFile()">✕</button>
-        </div>
         <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:${C.surface};border-top:1px solid ${C.border}">
           <button style="background:none;border:none;color:${C.muted};padding:8px;cursor:pointer;border-radius:50%" onclick="Chat.pickFile()" title="إرفاق ملف">${I.attach}</button>
           <div id="inpwrap" style="flex:1;display:flex;align-items:center">
             <div style="flex:1;background:${C.card};border-radius:24px;border:1px solid ${C.border};display:flex;align-items:center;padding:2px">
-              <textarea id="input" style="flex:1;background:none;border:none;color:${C.text};font-size:15px;padding:10px 14px;outline:none;resize:none;max-height:120px;font-family:inherit" placeholder="اكتب رسالة..." rows="1"></textarea>
+              <textarea id="input" style="flex:1;background:none;border:none;color:${C.text};font-size:15px;padding:10px 14px;outline:none;resize:none;max-height:120px;font-family:inherit;-webkit-user-select:text;user-select:text" placeholder="اكتب رسالة..." rows="1"></textarea>
             </div>
+          </div>
+          <div id="fprev" style="display:none;flex:1;align-items:center;gap:10px;background:${C.card};border-radius:24px;border:1px solid ${C.border};padding:6px 12px;height:44px">
+            <span id="fpplay" style="display:none;width:30px;height:30px;border-radius:50%;background:${C.primary};align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;color:#fff" onclick="Chat.playPreview()" title="استماع">${I.play}</span>
+            <div style="flex:1;min-width:0">
+              <div id="fplabel" style="font-size:10px;color:#60a5fa;font-weight:600"></div>
+              <div id="fpname" style="font-size:12px;color:${C.text};overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
+            </div>
+            <span id="fpdur" style="display:none;font-size:12px;color:${C.muted};direction:ltr;flex-shrink:0"></span>
+            <button style="background:none;border:none;color:${C.muted};padding:4px;cursor:pointer;display:flex" onclick="Chat.clearFile()" title="إلغاء">✕</button>
           </div>
           <div id="recbar" style="display:none;flex:1;align-items:center;gap:10px;background:${C.card};border-radius:24px;border:1px solid ${C.border};padding:4px 12px;height:44px">
             <div style="display:flex;align-items:center;gap:2px;height:22px;transform:scaleY(-1)">
@@ -265,9 +265,9 @@ const Chat = (() => {
   }
 
   // ── Messages ──
-  async function loadMsgs(convId) {
+  async function loadMsgs(convId, silent) {
     const list = el('msgs'); if (!list) return;
-    list.innerHTML = spinner();
+    if (!silent) list.innerHTML = spinner();
     try {
       const data = await API.get('/chat/messages?conversationId=' + convId);
       messages = data.messages || [];
@@ -293,7 +293,7 @@ const Chat = (() => {
       const reactHtml = m.reactions?.length ? renderReacts(m.reactions, m.id) : '';
       const status = isMine ? getStatus(m) : '';
       return '<div style="display:flex;flex-direction:column;max-width:78%;' + align + ';animation:fadeIn .2s" data-id="' + m.id + '">' +
-        '<div style="' + bg + ';padding:8px 12px 4px;cursor:pointer" onclick="Chat.bubbleClick(event,\'' + m.id + '\')">' +
+        '<div style="' + bg + ';padding:8px 12px 4px;cursor:pointer" onclick="Chat.bubbleClick(event,\'' + m.id + '\')" oncontextmenu="Chat.showContextMenu(\'' + m.id + '\');return false">' +
           (m.repliedTo ? '<div style="background:rgba(0,0,0,.2);border-radius:8px;padding:6px 8px;margin-bottom:6px;border-right:3px solid ' + C.primary + '"><div style="font-size:11px;color:#60a5fa;font-weight:600">رد</div><div style="font-size:11px;color:' + C.text + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(m.repliedTo.content||'') + '</div></div>' : '') +
           attHtml + contHtml + edited + reactHtml +
           '<div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;margin-top:2px">' +
@@ -305,6 +305,17 @@ const Chat = (() => {
     }).join('');
     if (atBottom) setTimeout(() => { if (list) list.scrollTop = list.scrollHeight; }, 50);
     else list.scrollTop = sv;
+    list.querySelectorAll('div[data-id]').forEach(w => {
+      const b = w.firstElementChild;
+      if (!b) return;
+      let lt = 0, lp = false;
+      b.addEventListener('touchstart', () => { lt = Date.now(); lp = false; }, {passive:true});
+      b.addEventListener('touchmove', () => { lp = true; }, {passive:true});
+      b.addEventListener('touchend', (e) => {
+        if (lp) return;
+        if (Date.now() - lt > 400) { e.preventDefault(); const id = w.dataset.id; if (id) showContextMenu(id); }
+      }, {passive:false});
+    });
   }
 
   function renderAtts(atts) {
@@ -336,7 +347,7 @@ const Chat = (() => {
       if (r.user?.id === u || r.userId === u) map[r.emoji].mine = true;
     });
     const groups = Object.values(map);
-    return '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;padding-right:4px">' +
+    return '<div style="display:flex;flex-wrap:wrap;align-items:center;gap:3px;margin-top:4px;padding-right:4px">' +
       groups.map(r => {
         const isMine = r.mine;
         return '<div style="display:flex;align-items:center;gap:2px;background:' + (isMine ? 'rgba(59,130,246,.25)' : 'rgba(59,130,246,.1)') + ';border:1px solid ' + (isMine ? 'rgba(96,165,250,.5)' : 'rgba(96,165,250,.2)') + ';border-radius:14px;padding:2px 7px;cursor:pointer;transition:transform .1s" onclick="event.stopPropagation();Chat.toggleReact(\'' + msgId + '\',\'' + r.emoji + '\')" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'scale(1)\'"><span style="font-size:14px">' + r.emoji + '</span><span style="font-size:11px;color:' + (isMine ? C.primary : C.muted) + ';font-weight:' + (isMine ? '700' : '400') + ';min-width:12px;text-align:center">' + r.count + '</span></div>'
@@ -346,34 +357,56 @@ const Chat = (() => {
 
   function getStatus(m) {
     const others = (currentConv?.participants?.length||2) - 1;
-    if (m.seenBy?.length >= others) return '<span style="font-size:12px;color:#60a5fa">✓✓</span>';
-    if (m.status === 'READ' || m.status === 'DELIVERED') return '<span style="font-size:12px;color:' + C.success + '">✓✓</span>';
+    const seen = m.seenBy?.length || 0;
+    if (seen >= others) return '<span style="font-size:12px;color:#60a5fa">✓✓</span>';
+    if ((m.status === 'READ' || m.status === 'DELIVERED') && others > 0) return '<span style="font-size:12px;color:' + C.muted + '">✓✓</span>';
     return '<span style="font-size:12px;color:' + C.muted + '">✓</span>';
   }
 
   // ── Bubble Context Menu ──
-  function bubbleClick(e, msgId) {
-    e.stopPropagation();
+  function showContextMenu(msgId) {
     const msg = messages.find(m => m.id === msgId);
     if (!msg) return;
     const isMine = msg.senderId === uid();
     const ov = document.createElement('div');
-    ov.style.cssText = 'position:fixed;inset:0;z-index:50;display:block';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:60;display:block';
     ov.innerHTML = '<div style="position:absolute;inset:0;background:rgba(0,0,0,.4)" onclick="this.parentElement.remove()"></div>' +
       '<div style="position:absolute;bottom:0;left:0;right:0;background:' + C.surface + ';border-radius:20px 20px 0 0;padding:12px 16px 24px;animation:slideUp .25s">' +
         '<div style="width:40px;height:4px;border-radius:2px;background:rgba(156,163,175,.3);margin:0 auto 10px"></div>' +
-        '<div style="display:flex;gap:4px;padding:8px 0 12px;justify-content:center;border-bottom:1px solid ' + C.border + ';margin-bottom:8px">' +
-          ['👍','❤️','😂','😮','😢','🙏'].map(e => {
-            const existing = msg.reactions?.some(r => r.emoji === e && (r.userId === uid() || r.user?.id === uid()));
-            return '<button style="font-size:30px;background:' + (existing ? 'rgba(59,130,246,.2)' : 'transparent') + ';border:none;cursor:pointer;padding:6px 10px;border-radius:16px;transition:all .15s" onclick="event.stopPropagation();this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.toggleReact(\'' + msgId + '\',\'' + e + '\')" onmouseover="this.style.background=\'rgba(59,130,246,.15)\';this.style.transform=\'scale(1.2)\'" onmouseout="this.style.background=\'' + (existing ? 'rgba(59,130,246,.2)' : 'transparent') + '\';this.style.transform=\'scale(1)\'">' + e + '</button>'
-          }).join('') +
-        '</div>' +
-        (isMine ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.editMsg(\'' + msgId + '\')"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.text + '">' + I.edit + '</span> تعديل</div>' : '') +
-        '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.replyMsg(\'' + msgId + '\')"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.text + '">' + I.reply + '</span> رد</div>' +
+        '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.copyMsg(\'' + msgId + '\')"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.text + '">' + I.reply + '</span> نسخ</div>' +
+        '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.replyMsg(\'' + msgId + '\')"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.text + '">' + (isMine ? I.edit : I.reply) + '</span> ' + (isMine ? 'تعديل' : 'رد') + '</div>' +
         (isMine ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px;color:' + C.error + '" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.delMsg(\'' + msgId + '\')"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.error + '">' + I.trash + '</span> حذف</div>' : '') +
         '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.msgInfo(\'' + msgId + '\')"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.text + '">' + I.info + '</span> معلومات</div>' +
       '</div>';
     document.body.appendChild(ov);
+  }
+
+  function bubbleClick(e, msgId) {
+    e.stopPropagation();
+    const msg = messages.find(m => m.id === msgId);
+    if (!msg) return;
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:fixed;inset:0;z-index:50;display:block';
+    const bubble = e.currentTarget.closest('[style*="max-width"]');
+    const rect = bubble ? bubble.getBoundingClientRect() : null;
+    const top = rect ? Math.max(8, rect.top - 56) : '30%';
+    ov.innerHTML = '<div style="position:absolute;inset:0" onclick="this.parentElement.remove()"></div>' +
+      '<div style="position:absolute;left:50%;transform:translateX(-50%);top:' + top + 'px;display:flex;align-items:center;gap:2px;background:' + C.surface + ';border-radius:24px;padding:6px 8px;box-shadow:0 4px 20px rgba(0,0,0,.4);animation:fadeIn .15s">' +
+        ['👍','❤️','😂','😮','😢','🙏'].map(e => {
+          const existing = msg.reactions?.some(r => r.emoji === e && (r.userId === uid() || r.user?.id === uid()));
+          return '<button style="font-size:28px;background:' + (existing ? 'rgba(59,130,246,.15)' : 'transparent') + ';border:none;cursor:pointer;padding:6px 8px;border-radius:14px;transition:all .12s;line-height:1" onclick="event.stopPropagation();this.parentElement.parentElement.remove();Chat.toggleReact(\'' + msgId + '\',\'' + e + '\')" onmouseover="this.style.background=\'rgba(59,130,246,.12)\';this.style.transform=\'scale(1.25)\'" onmouseout="this.style.background=' + (existing ? "'rgba(59,130,246,.15)'" : "'transparent'") + ';this.style.transform=\'scale(1)\'">' + e + '</button>'
+        }).join('') +
+      '</div>';
+    document.body.appendChild(ov);
+  }
+
+  // ── Copy ──
+  function copyMsg(msgId) {
+    const msg = messages.find(m => m.id === msgId);
+    if (!msg) return;
+    const text = msg.content || '';
+    if (!text) { toast('لا يوجد نص للنسخ'); return; }
+    navigator.clipboard.writeText(text).then(() => toast('تم النسخ')).catch(() => toast('فشل النسخ'));
   }
 
   // ── Reply ──
@@ -430,7 +463,7 @@ const Chat = (() => {
         msg.reactions.push({ emoji, userId: u, user: { id: u, name: (API.getUser()||{}).name } });
       }
       document.querySelectorAll('[style*="z-index:50"]').forEach(el => el.remove());
-      renderMsgs();
+      await loadMsgs(currentConv.id, true);
     } catch (e) { toast(e.message); }
   }
 
@@ -494,10 +527,11 @@ const Chat = (() => {
         body.attachments = [uploadRes];
         selectedFile = null; clearFile();
       }
-      await API.post('/chat/messages', body);
+      const res = await API.post('/chat/messages', body);
       input.value = ''; input.style.height = 'auto'; input.dispatchEvent(new Event('input'));
       replyingTo = null; cancelReply();
-      await loadMsgs(currentConv.id);
+      if (res?.message) { messages.unshift(res.message); renderMsgs(); }
+      else await loadMsgs(currentConv.id);
     } catch (e) { toast(e.message); }
   }
 
@@ -520,23 +554,28 @@ const Chat = (() => {
   let prevAudio = null;
   function playPreview() {
     const btn = el('fpplay');
-    if (!recBlobUrl) return;
-    if (prevAudio) { prevAudio.pause(); prevAudio = null; btn.innerHTML = I.play; btn.style.background = C.primary; return; }
+    if (!recBlobUrl) { toast('لا يوجد تسجيل للاستماع'); return; }
+    if (prevAudio) { prevAudio.pause(); prevAudio = null; btn.innerHTML = I.play; btn.style.background = C.primary; el('fpdur').textContent = ''; return; }
+    const dur = el('fpdur');
     const audio = new Audio(recBlobUrl);
     prevAudio = audio;
     audio.play();
     btn.innerHTML = I.pause;
     btn.style.background = C.accent;
-    const dur = el('fpdur');
-    dur.style.display = 'block';
-    audio.addEventListener('timeupdate', () => { dur.textContent = fmtDur(audio.currentTime); });
+    const upd = () => { dur.textContent = fmtDur(audio.currentTime); dur.style.display = 'block'; };
+    audio.addEventListener('timeupdate', upd);
+    audio.addEventListener('loadedmetadata', () => { dur.textContent = fmtDur(audio.duration); dur.style.display = 'block'; });
     audio.addEventListener('ended', () => { prevAudio = null; btn.innerHTML = I.play; btn.style.background = C.primary; dur.textContent = ''; });
-    audio.addEventListener('loadedmetadata', () => { dur.textContent = fmtDur(audio.duration); });
   }
   function clearFile() {
     if (prevAudio) { prevAudio.pause(); prevAudio = null; }
     if (recBlobUrl) { URL.revokeObjectURL(recBlobUrl); recBlobUrl = null; }
+    const pp = el('fpplay'); if (pp) { pp.style.display = 'none'; pp.innerHTML = I.play; pp.style.background = C.primary; }
+    el('fpdur').textContent = ''; el('fpdur').style.display = 'none';
     selectedFile = null; el('fprev').style.display = 'none';
+    el('inpwrap').style.display = 'flex';
+    el('recbtn').style.display = 'flex';
+    el('sendbtn').style.display = 'none';
   }
 
   // ── Voice Recording ──
@@ -562,7 +601,7 @@ const Chat = (() => {
         el('sendbtn').style.display = 'flex';
         el('recbtn').style.display = 'none';
         el('recbar').style.display = 'none';
-        el('inpwrap').style.display = 'flex';
+        el('inpwrap').style.display = 'none';
         if (recTimer) { clearInterval(recTimer); recTimer = null; }
         recording = false;
       };
@@ -852,7 +891,7 @@ const Chat = (() => {
 
   return {
     showChats, loadConvs, openConv, loadMsgs, renderMsgs,
-    sendMsg, bubbleClick, toggleReact, showReactors, msgInfo,
+    sendMsg, bubbleClick, showContextMenu, copyMsg, toggleReact, showReactors, msgInfo,
     replyMsg, cancelReply, editMsg, delMsg,
     pickFile, clearFile, toggleRecord, stopRec, cancelRec, playAudio, playPreview, previewImage,
     showGroupInfo, genInvite, leaveGroup,

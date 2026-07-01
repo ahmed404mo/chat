@@ -19,10 +19,14 @@ const API = (() => {
     else localStorage.removeItem('mentora_user');
   }
 
+  function isPublicEndpoint(path) {
+    return path.startsWith('/auth/');
+  }
+
   async function request(method, path, body, isFormData) {
     const opts = { method, headers: {} };
     const token = getToken();
-    if (token) opts.headers['Authorization'] = `Bearer ${token}`;
+    if (token && !isPublicEndpoint(path)) opts.headers['Authorization'] = `Bearer ${token}`;
     if (body) {
       if (isFormData) {
         opts.body = body;
@@ -46,7 +50,7 @@ const API = (() => {
       throw new Error('خطأ في استجابة الخادم');
     }
     if (!res.ok) {
-      if (res.status === 401) {
+      if (res.status === 401 && !isPublicEndpoint(path)) {
         setToken(null); setUser(null);
         if (typeof Chat !== 'undefined' && Chat.logout) Chat.logout();
         else if (typeof Auth !== 'undefined' && Auth.showLogin) Auth.showLogin();
