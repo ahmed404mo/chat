@@ -8,6 +8,7 @@ const Chat = (() => {
   let mediaRecorder = null;
   let audioChunks = [];
   let recTimer = null;
+  let recBlobUrl = null;
   let users = [];
   let conversations = [];
 
@@ -44,7 +45,7 @@ const Chat = (() => {
     if (!el('ispin')) {
       const s = document.createElement('style');
       s.id = 'ispin';
-      s.textContent = '@keyframes spin{to{transform:rotate(360deg)}} @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}} @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}} @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}';
+      s.textContent = '@keyframes spin{to{transform:rotate(360deg)}} @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}} @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}} @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}} @keyframes recwave{0%,100%{transform:scaleY(.5)}50%{transform:scaleY(1)}}';
       document.head.appendChild(s);
     }
   }
@@ -94,6 +95,7 @@ const Chat = (() => {
     camera: icon('M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'),
     play: icon('M11 5l8 7-8 7V5z'),
     pause: icon('M6 4h4v16H6zM14 4h4v16h-4z'),
+    stop: icon('M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z'),
 
     enter: icon('M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M13 12H3'),
     link: icon('M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71'),
@@ -219,19 +221,31 @@ const Chat = (() => {
           <button style="background:none;border:none;color:${C.muted};padding:4px;cursor:pointer" onclick="Chat.cancelReply()">✕</button>
         </div>
         <div id="fprev" style="display:none;align-items:center;gap:10px;padding:8px 16px;background:${C.card};border-bottom:1px solid ${C.border}">
+          <span id="fpplay" style="display:none;width:32px;height:32px;border-radius:50%;background:${C.primary};align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;color:#fff" onclick="Chat.playPreview()" title="استماع">${I.play}</span>
           <div style="flex:1;min-width:0">
             <div id="fplabel" style="font-size:11px;color:#60a5fa;font-weight:600"></div>
             <div id="fpname" style="font-size:12px;color:${C.muted};overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
           </div>
+          <span id="fpdur" style="display:none;font-size:12px;color:${C.muted};direction:ltr"></span>
           <button style="background:none;border:none;color:${C.muted};padding:4px;cursor:pointer" onclick="Chat.clearFile()">✕</button>
         </div>
-        <div style="display:flex;align-items:flex-end;gap:6px;padding:8px 10px;background:${C.surface};border-top:1px solid ${C.border}">
+        <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:${C.surface};border-top:1px solid ${C.border}">
           <button style="background:none;border:none;color:${C.muted};padding:8px;cursor:pointer;border-radius:50%" onclick="Chat.pickFile()" title="إرفاق ملف">${I.attach}</button>
-          <div style="flex:1;background:${C.card};border-radius:24px;border:1px solid ${C.border};display:flex;align-items:center;padding:2px">
-            <textarea id="input" style="flex:1;background:none;border:none;color:${C.text};font-size:15px;padding:10px 14px;outline:none;resize:none;max-height:120px;font-family:inherit" placeholder="اكتب رسالة..." rows="1"></textarea>
+          <div id="inpwrap" style="flex:1;display:flex;align-items:center">
+            <div style="flex:1;background:${C.card};border-radius:24px;border:1px solid ${C.border};display:flex;align-items:center;padding:2px">
+              <textarea id="input" style="flex:1;background:none;border:none;color:${C.text};font-size:15px;padding:10px 14px;outline:none;resize:none;max-height:120px;font-family:inherit" placeholder="اكتب رسالة..." rows="1"></textarea>
+            </div>
           </div>
-          <span id="rectimer" style="display:none;font-size:14px;font-weight:600;color:#fff;background:${C.error};padding:4px 10px;border-radius:12px;direction:ltr">0:00</span>
-          <button id="recbtn" style="background:${C.primary};border:none;color:#fff;padding:10px;border-radius:50%;cursor:pointer" onclick="Chat.toggleRecord()" title="تسجيل صوتي">${I.mic}</button>
+          <div id="recbar" style="display:none;flex:1;align-items:center;gap:10px;background:${C.card};border-radius:24px;border:1px solid ${C.border};padding:4px 12px;height:44px">
+            <div style="display:flex;align-items:center;gap:2px;height:22px;transform:scaleY(-1)">
+              ${[4,8,12,6,16,10,14,5,18,9].map((h,i) => '<div style="width:3px;height:'+h+'px;border-radius:2px;background:'+C.error+';animation:recwave .6s ease-in-out infinite;animation-delay:'+(i*0.07)+'s;transform-origin:center"></div>').join('')}
+            </div>
+            <span id="rectimer" style="font-size:16px;font-weight:700;color:${C.text};direction:ltr;min-width:48px">0:00</span>
+            <div style="flex:1"></div>
+            <button style="background:none;border:none;color:${C.muted};padding:6px;cursor:pointer;border-radius:50%;display:flex" onclick="Chat.cancelRec()" title="إلغاء">${I.trash}</button>
+            <button id="recstopbtn" style="background:${C.error};border:none;color:#fff;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(239,68,68,.4)" onclick="Chat.stopRec()" title="إيقاف">${I.stop}</button>
+          </div>
+          <button id="recbtn" style="background:${C.primary};border:none;color:#fff;padding:10px;border-radius:50%;cursor:pointer;display:flex" onclick="Chat.toggleRecord()" title="تسجيل صوتي">${I.mic}</button>
           <button id="sendbtn" style="background:${C.primary};border:none;color:#fff;padding:10px;border-radius:50%;cursor:pointer;display:none" onclick="Chat.sendMsg()" title="إرسال">${I.send}</button>
         </div>
       </div>
@@ -266,6 +280,7 @@ const Chat = (() => {
   function renderMsgs() {
     const list = el('msgs'); if (!list) return;
     const atBottom = list.scrollTop >= list.scrollHeight - list.clientHeight - 50;
+    const sv = list.scrollTop;
     if (!messages.length) { list.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;padding:24px;color:' + C.muted + '">لا توجد رسائل</div>'; return; }
     const u = uid();
     list.innerHTML = messages.map(m => {
@@ -275,7 +290,7 @@ const Chat = (() => {
       const attHtml = renderAtts(m.attachments);
       const contHtml = m.content ? '<div style="font-size:15px;line-height:1.4;white-space:pre-wrap;word-break:break-word">' + esc(m.content) + '</div>' : '';
       const edited = m.isEdited ? '<div style="font-size:10px;color:' + C.muted + ';margin-top:1px">تم التعديل</div>' : '';
-      const reactHtml = m.reactions?.length ? renderReacts(m.reactions) : '';
+      const reactHtml = m.reactions?.length ? renderReacts(m.reactions, m.id) : '';
       const status = isMine ? getStatus(m) : '';
       return '<div style="display:flex;flex-direction:column;max-width:78%;' + align + ';animation:fadeIn .2s" data-id="' + m.id + '">' +
         '<div style="' + bg + ';padding:8px 12px 4px;cursor:pointer" onclick="Chat.bubbleClick(event,\'' + m.id + '\')">' +
@@ -289,6 +304,7 @@ const Chat = (() => {
       '</div>';
     }).join('');
     if (atBottom) setTimeout(() => { if (list) list.scrollTop = list.scrollHeight; }, 50);
+    else list.scrollTop = sv;
   }
 
   function renderAtts(atts) {
@@ -311,16 +327,20 @@ const Chat = (() => {
     }).join('');
   }
 
-  function renderReacts(reactions) {
+  function renderReacts(reactions, msgId) {
+    const u = uid();
     const map = {};
     reactions.forEach(r => {
-      if (!map[r.emoji]) map[r.emoji] = { emoji: r.emoji, count: 0, users: [] };
+      if (!map[r.emoji]) map[r.emoji] = { emoji: r.emoji, count: 0, mine: false };
       map[r.emoji].count++;
-      (map[r.emoji].users).push(r.user?.id || r.userId);
+      if (r.user?.id === u || r.userId === u) map[r.emoji].mine = true;
     });
     const groups = Object.values(map);
-    return '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">' +
-      groups.map(r => '<div style="display:flex;align-items:center;gap:3px;background:rgba(59,130,246,.15);border:1px solid rgba(96,165,250,.3);border-radius:12px;padding:1px 6px;cursor:pointer" onclick="event.stopPropagation();Chat.showReactors(\'' + r.emoji + '\')"><span style="font-size:13px">' + r.emoji + '</span><span style="font-size:10px;color:' + C.muted + '">' + r.count + '</span></div>').join('') +
+    return '<div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px;padding-right:4px">' +
+      groups.map(r => {
+        const isMine = r.mine;
+        return '<div style="display:flex;align-items:center;gap:2px;background:' + (isMine ? 'rgba(59,130,246,.25)' : 'rgba(59,130,246,.1)') + ';border:1px solid ' + (isMine ? 'rgba(96,165,250,.5)' : 'rgba(96,165,250,.2)') + ';border-radius:14px;padding:2px 7px;cursor:pointer;transition:transform .1s" onclick="event.stopPropagation();Chat.toggleReact(\'' + msgId + '\',\'' + r.emoji + '\')" onmouseover="this.style.transform=\'scale(1.1)\'" onmouseout="this.style.transform=\'scale(1)\'"><span style="font-size:14px">' + r.emoji + '</span><span style="font-size:11px;color:' + (isMine ? C.primary : C.muted) + ';font-weight:' + (isMine ? '700' : '400') + ';min-width:12px;text-align:center">' + r.count + '</span></div>'
+      }).join('') +
     '</div>';
   }
 
@@ -340,15 +360,18 @@ const Chat = (() => {
     const ov = document.createElement('div');
     ov.style.cssText = 'position:fixed;inset:0;z-index:50;display:block';
     ov.innerHTML = '<div style="position:absolute;inset:0;background:rgba(0,0,0,.4)" onclick="this.parentElement.remove()"></div>' +
-      '<div style="position:absolute;bottom:0;left:0;right:0;background:' + C.surface + ';border-radius:20px 20px 0 0;padding:16px 24px 32px;animation:slideUp .25s">' +
-        '<div style="width:40px;height:4px;border-radius:2px;background:rgba(156,163,175,.3);margin:0 auto 12px"></div>' +
-        (isMine ? '<div style="display:flex;align-items:center;gap:12px;padding:12px 8px;border-radius:10px;cursor:pointer;font-size:14px" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.editMsg(\'' + msgId + '\')"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.text + '">' + I.edit + '</span> تعديل</div>' : '') +
-        '<div style="display:flex;align-items:center;gap:12px;padding:12px 8px;border-radius:10px;cursor:pointer;font-size:14px" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.replyMsg(\'' + msgId + '\')"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.text + '">' + I.reply + '</span> رد</div>' +
-        (isMine ? '<div style="display:flex;align-items:center;gap:12px;padding:12px 8px;border-radius:10px;cursor:pointer;font-size:14px;color:' + C.error + '" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.delMsg(\'' + msgId + '\')"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.error + '">' + I.trash + '</span> حذف</div>' : '') +
-        '<div style="display:flex;align-items:center;gap:12px;padding:12px 8px;border-radius:10px;cursor:pointer;font-size:14px" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.msgInfo(\'' + msgId + '\')"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.text + '">' + I.info + '</span> معلومات</div>' +
-        '<div style="display:flex;gap:8px;padding:8px 16px;justify-content:center">' +
-          ['👍','❤️','😂','😮','😢','🙏'].map(e => '<button style="font-size:26px;background:none;border:none;cursor:pointer;padding:4px 8px;border-radius:12px" onclick="event.stopPropagation();Chat.toggleReact(\'' + msgId + '\',\'' + e + '\')">' + e + '</button>').join('') +
+      '<div style="position:absolute;bottom:0;left:0;right:0;background:' + C.surface + ';border-radius:20px 20px 0 0;padding:12px 16px 24px;animation:slideUp .25s">' +
+        '<div style="width:40px;height:4px;border-radius:2px;background:rgba(156,163,175,.3);margin:0 auto 10px"></div>' +
+        '<div style="display:flex;gap:4px;padding:8px 0 12px;justify-content:center;border-bottom:1px solid ' + C.border + ';margin-bottom:8px">' +
+          ['👍','❤️','😂','😮','😢','🙏'].map(e => {
+            const existing = msg.reactions?.some(r => r.emoji === e && (r.userId === uid() || r.user?.id === uid()));
+            return '<button style="font-size:30px;background:' + (existing ? 'rgba(59,130,246,.2)' : 'transparent') + ';border:none;cursor:pointer;padding:6px 10px;border-radius:16px;transition:all .15s" onclick="event.stopPropagation();this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.toggleReact(\'' + msgId + '\',\'' + e + '\')" onmouseover="this.style.background=\'rgba(59,130,246,.15)\';this.style.transform=\'scale(1.2)\'" onmouseout="this.style.background=\'' + (existing ? 'rgba(59,130,246,.2)' : 'transparent') + '\';this.style.transform=\'scale(1)\'">' + e + '</button>'
+          }).join('') +
         '</div>' +
+        (isMine ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.editMsg(\'' + msgId + '\')"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.text + '">' + I.edit + '</span> تعديل</div>' : '') +
+        '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.replyMsg(\'' + msgId + '\')"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.text + '">' + I.reply + '</span> رد</div>' +
+        (isMine ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px;color:' + C.error + '" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.delMsg(\'' + msgId + '\')"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.error + '">' + I.trash + '</span> حذف</div>' : '') +
+        '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.msgInfo(\'' + msgId + '\')"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.text + '">' + I.info + '</span> معلومات</div>' +
       '</div>';
     document.body.appendChild(ov);
   }
@@ -494,7 +517,27 @@ const Chat = (() => {
     inp.click();
   }
 
-  function clearFile() { selectedFile = null; el('fprev').style.display = 'none'; }
+  let prevAudio = null;
+  function playPreview() {
+    const btn = el('fpplay');
+    if (!recBlobUrl) return;
+    if (prevAudio) { prevAudio.pause(); prevAudio = null; btn.innerHTML = I.play; btn.style.background = C.primary; return; }
+    const audio = new Audio(recBlobUrl);
+    prevAudio = audio;
+    audio.play();
+    btn.innerHTML = I.pause;
+    btn.style.background = C.accent;
+    const dur = el('fpdur');
+    dur.style.display = 'block';
+    audio.addEventListener('timeupdate', () => { dur.textContent = fmtDur(audio.currentTime); });
+    audio.addEventListener('ended', () => { prevAudio = null; btn.innerHTML = I.play; btn.style.background = C.primary; dur.textContent = ''; });
+    audio.addEventListener('loadedmetadata', () => { dur.textContent = fmtDur(audio.duration); });
+  }
+  function clearFile() {
+    if (prevAudio) { prevAudio.pause(); prevAudio = null; }
+    if (recBlobUrl) { URL.revokeObjectURL(recBlobUrl); recBlobUrl = null; }
+    selectedFile = null; el('fprev').style.display = 'none';
+  }
 
   // ── Voice Recording ──
   async function toggleRecord() {
@@ -508,36 +551,50 @@ const Chat = (() => {
         stream.getTracks().forEach(t => t.stop());
         if (!audioChunks.length) return;
         const blob = new Blob(audioChunks, { type: 'audio/webm' });
+        if (recBlobUrl) URL.revokeObjectURL(recBlobUrl);
+        recBlobUrl = URL.createObjectURL(blob);
         selectedFile = new File([blob], 'voice_' + Date.now() + '.webm', { type: 'audio/webm' });
         el('fplabel').innerHTML = I.mic;
         el('fpname').textContent = 'رسالة صوتية';
+        el('fpplay').style.display = 'flex';
+        el('fpplay').setAttribute('data-url', recBlobUrl);
         el('fprev').style.display = 'flex';
         el('sendbtn').style.display = 'flex';
         el('recbtn').style.display = 'none';
-        el('recbtn').style.background = C.primary;
-        el('recbtn').style.borderRadius = '50%';
-        el('recbtn').style.padding = '10px';
-        el('recbtn').style.boxShadow = 'none';
+        el('recbar').style.display = 'none';
+        el('inpwrap').style.display = 'flex';
         if (recTimer) { clearInterval(recTimer); recTimer = null; }
-        el('rectimer').style.display = 'none';
         recording = false;
-        el('recbtn').innerHTML = I.mic;
       };
       mediaRecorder.start();
       recording = true;
-      el('recbtn').innerHTML = I.mic;
-      el('recbtn').style.background = C.error;
-      el('recbtn').style.padding = '10px';
-      el('recbtn').style.boxShadow = '0 0 0 4px rgba(239,68,68,.3)';
+      el('recbtn').style.display = 'none';
+      el('sendbtn').style.display = 'none';
+      el('inpwrap').style.display = 'none';
+      el('recbar').style.display = 'flex';
+      el('rectimer').textContent = '0:00';
       const t0 = Date.now();
+      if (recTimer) clearInterval(recTimer);
       recTimer = setInterval(() => {
         const sec = Math.floor((Date.now() - t0) / 1000);
         el('rectimer').textContent = fmtDur(sec);
       }, 200);
-      el('rectimer').style.display = 'block';
     } catch { toast('تعذر الوصول إلى الميكروفون'); }
   }
 
+  function cancelRec() {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.onstop = null;
+      mediaRecorder.stop();
+    }
+    audioChunks = [];
+    el('recbar').style.display = 'none';
+    el('inpwrap').style.display = 'flex';
+    el('recbtn').style.display = 'flex';
+    el('sendbtn').style.display = 'none';
+    if (recTimer) { clearInterval(recTimer); recTimer = null; }
+    recording = false;
+  }
   function stopRec() { if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); }
 
   // ── Audio Playback ──
@@ -797,7 +854,7 @@ const Chat = (() => {
     showChats, loadConvs, openConv, loadMsgs, renderMsgs,
     sendMsg, bubbleClick, toggleReact, showReactors, msgInfo,
     replyMsg, cancelReply, editMsg, delMsg,
-    pickFile, clearFile, toggleRecord, playAudio, previewImage,
+    pickFile, clearFile, toggleRecord, stopRec, cancelRec, playAudio, playPreview, previewImage,
     showGroupInfo, genInvite, leaveGroup,
     showCreateGroup, renderUserPicker, createGroup,
     showJoinModal, joinViaCode,
