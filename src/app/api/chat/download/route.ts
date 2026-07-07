@@ -35,13 +35,20 @@ export async function GET(req: Request) {
     const formatMatch = fileUrl.match(/\.(\w+)(?:\?.+)?$/);
     const format = formatMatch ? formatMatch[1] : undefined;
 
+    const isDownload = searchParams.get("download") === "1";
+
     const signedUrl = cloudinary.url(publicId, {
       sign_url: true,
       secure: true,
       resource_type: "image",
       type: "upload",
       format,
+      flags: isDownload ? "attachment" : undefined,
     });
+
+    if (isDownload) {
+      return NextResponse.redirect(signedUrl);
+    }
     return NextResponse.redirect(signedUrl);
   } catch {
     return NextResponse.json({ error: "Failed to download file" }, { status: 500 });
