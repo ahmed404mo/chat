@@ -26,6 +26,14 @@ const Chat = (() => {
   };
   const uid = () => (API.getUser()||{}).id || '';
 
+  const colors = ['#2563eb','#7c3aed','#dc2626','#059669','#d97706','#0891b2','#db2777','#65a30d','#9333ea','#ca8a04'];
+  function userColor(id) {
+    if (!id) return colors[0];
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = ((h << 5) - h) + id.charCodeAt(i);
+    return colors[Math.abs(h) % colors.length];
+  }
+
   function esc(s) { if (!s) return ''; const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 
   function fmt(d) {
@@ -53,7 +61,7 @@ const Chat = (() => {
 
   function render(html) {
     document.body.innerHTML = '';
-    document.body.style.cssText = 'margin:0;height:100%;background:' + C.bg + ';color:' + C.text + ';font-family:Inter,sans-serif;font-size:16px;direction:rtl;overflow:hidden;-webkit-user-select:none;user-select:none';
+    document.body.style.cssText = 'margin:0;height:100%;background:' + C.bg + ';color:' + C.text + ';font-family:Cairo,sans-serif;font-size:16px;direction:rtl;overflow:hidden;-webkit-user-select:none;user-select:none';
     document.body.innerHTML = html;
     if (!el('ispin')) {
       const s = document.createElement('style');
@@ -143,6 +151,10 @@ const Chat = (() => {
     window.addEventListener('offline', () => showNetBar('لا يوجد اتصال بالإنترنت', C.error));
   })();
 
+  window.addEventListener('popstate', () => {
+    if (currentConv) showChats();
+  });
+
   function showChats() {
     if (currentConv) try { PusherManager.unsubscribe(currentConv.id); } catch(e) {}
     currentConv = null;
@@ -206,6 +218,7 @@ const Chat = (() => {
     const u = uid();
     const part = (currentConv.participants||[]).find(p => p.user?.id !== u);
     const title = currentConv.isGroup ? currentConv.title : part?.user?.name || currentConv.title;
+    history.pushState({ view: 'chat' }, '');
     render(`
       <div id="iapp" style="height:100vh;display:flex;flex-direction:column">
         <div style="display:flex;align-items:center;padding:12px 20px;background:${C.surface};border-bottom:1px solid ${C.border};min-height:56px;gap:8px;box-shadow:0px 4px 12px rgba(15,23,42,0.04)">
@@ -239,7 +252,7 @@ const Chat = (() => {
           <button style="background:none;border:none;color:${C.muted};padding:8px;cursor:pointer;border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center" onclick="Chat.pickFile()" title="إرفاق ملف">${ms('attach_file',20)}</button>
           <div id="inpwrap" style="flex:1;display:flex;align-items:center">
             <div style="flex:1;background:${C.surface};border-radius:24px;border:1px solid ${C.border};display:flex;align-items:center;padding:2px;transition:border-color .2s" onfocusin="this.style.borderColor='${C.primary}';this.style.boxShadow='0 0 0 2px rgba(37,99,235,.2)'" onfocusout="this.style.borderColor='${C.border}';this.style.boxShadow='none'">
-              <textarea id="input" style="flex:1;background:none;border:none;color:${C.text};font-size:15px;font-family:Inter;padding:10px 14px;outline:none;resize:none;max-height:120px;-webkit-user-select:text;user-select:text" placeholder="اكتب رسالة..." rows="1"></textarea>
+              <textarea id="input" style="flex:1;background:none;border:none;color:${C.text};font-size:15px;font-family:Cairo;padding:10px 14px;outline:none;resize:none;max-height:120px;-webkit-user-select:text;user-select:text" placeholder="اكتب رسالة..." rows="1"></textarea>
             </div>
           </div>
           <div id="recbar" style="display:none;flex:1;align-items:center;gap:10px;background:${C.surface};border-radius:24px;border:1px solid ${C.border};padding:4px 12px;height:44px">
@@ -279,7 +292,11 @@ const Chat = (() => {
       }
     });
     inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); } });
-    loadMsgs(id);
+    loadMsgs(id).then(() => markAsRead());
+    const msgsEl = el('msgs');
+    if (msgsEl) msgsEl.addEventListener('scroll', () => {
+      if (msgsEl.scrollTop >= msgsEl.scrollHeight - msgsEl.clientHeight - 50) markAsRead();
+    });
     if (currentConv.id) try { PusherManager.subscribe(currentConv.id); } catch(e) {}
   }
 
@@ -298,6 +315,11 @@ const Chat = (() => {
     }
   }
 
+  function markAsRead() {
+    if (!currentConv?.id) return;
+    API.post('/chat/messages/read', { conversationId: currentConv.id }).catch(() => {});
+  }
+
   function renderMsgs() {
     const list = el('msgs'); if (!list) return;
     const atBottom = list.scrollTop >= list.scrollHeight - list.clientHeight - 50;
@@ -310,7 +332,7 @@ const Chat = (() => {
       const bg = isMine ? 'background:' + C.bubbleSelf + ';border-radius:16px 16px 4px 16px' : 'background:' + C.bubbleOther + ';border-radius:16px 16px 16px 4px';
       const txtColor = isMine ? 'color:#fff' : 'color:' + C.onBubbleOther;
       const metaColor = isMine ? 'color:rgba(255,255,255,.7)' : 'color:' + C.muted;
-      const senderName = (!isMine && currentConv?.isGroup && m.sender?.name) ? '<div style="font-size:11px;color:' + C.primary + ';font-weight:600;margin-bottom:2px">' + esc(m.sender.name) + '</div>' : '';
+      const senderName = (!isMine && currentConv?.isGroup && m.sender?.name) ? '<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div style="width:18px;height:18px;border-radius:50%;background:' + userColor(m.senderId) + ';display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0">' + esc(m.sender.name[0]||'') + '</div><span style="font-size:11px;color:' + userColor(m.senderId) + ';font-weight:600">' + esc(m.sender.name) + '</span></div>' : '';
       const attHtml = renderAtts(m.attachments, isMine);
       const contHtml = m.content ? '<div style="font-size:15px;line-height:1.4;white-space:pre-wrap;word-break:break-word;' + txtColor + '">' + esc(m.content) + '</div>' : '';
       const edited = m.isEdited ? '<div style="font-size:10px;' + metaColor + ';margin-top:1px">تم التعديل</div>' : '';
@@ -449,9 +471,9 @@ const Chat = (() => {
       '<div style="position:absolute;bottom:0;left:0;right:0;background:' + C.surface + ';border-radius:16px 16px 0 0;padding:12px 20px 24px;animation:slideUp .25s">' +
         '<div style="width:40px;height:4px;border-radius:2px;background:rgba(67,70,85,.2);margin:0 auto 10px"></div>' +
         '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px;transition:background .15s" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.copyMsg(\'' + msgId + '\')" onmouseover="this.style.background=\'' + C.card + '\'" onmouseout="this.style.background=\'transparent\'"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.primary + '">' + ms('content_copy',18) + '</span> نسخ</div>' +
+        '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px;transition:background .15s" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.msgInfo(\'' + msgId + '\')" onmouseover="this.style.background=\'' + C.card + '\'" onmouseout="this.style.background=\'transparent\'"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.primary + '">' + ms('info',18) + '</span> معلومات</div>' +
         (isMine ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px;transition:background .15s" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.editMsg(\'' + msgId + '\')" onmouseover="this.style.background=\'' + C.card + '\'" onmouseout="this.style.background=\'transparent\'"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.primary + '">' + ms('edit',18) + '</span> تعديل</div>' : '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px;transition:background .15s" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.replyMsg(\'' + msgId + '\')" onmouseover="this.style.background=\'' + C.card + '\'" onmouseout="this.style.background=\'transparent\'"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.primary + '">' + ms('reply',18) + '</span> رد</div>') +
         (isMine ? '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px;color:' + C.error + ';transition:background .15s" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.delMsg(\'' + msgId + '\')" onmouseover="this.style.background=\'' + C.card + '\'" onmouseout="this.style.background=\'transparent\'"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.error + '">' + ms('delete',18) + '</span> حذف</div>' : '') +
-        '<div style="display:flex;align-items:center;gap:12px;padding:10px 8px;border-radius:10px;cursor:pointer;font-size:14px;transition:background .15s" onclick="this.closest(\'[style*=\\\'z-index\\\']\').remove();Chat.msgInfo(\'' + msgId + '\')" onmouseover="this.style.background=\'' + C.card + '\'" onmouseout="this.style.background=\'transparent\'"><span style="width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:' + C.primary + '">' + ms('info',18) + '</span> معلومات</div>' +
       '</div>';
     document.body.appendChild(ov);
   }
@@ -1001,7 +1023,7 @@ const Chat = (() => {
             '</div>'
           ).join('') +
         '</div>' +
-        '<button style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;background:' + C.primary + ';color:#fff;width:100%;min-height:44px;font-family:Inter" onclick="Chat.addMembers()">' + ms('person_add',18) + ' إضافة</button>' +
+        '<button style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;background:' + C.primary + ';color:#fff;width:100%;min-height:44px;font-family:Cairo" onclick="Chat.addMembers()">' + ms('person_add',18) + ' إضافة</button>' +
       '</div>';
       showSheet(html);
     });
@@ -1032,9 +1054,9 @@ const Chat = (() => {
   function showCreateGroup() {
     loadUsers().then(() => {
       let html = '<div style="display:flex;flex-direction:column;gap:16px">' +
-        '<div><input id="grpname" placeholder="اسم المجموعة" style="width:100%;background:' + C.surface + ';border:1px solid ' + C.border + ';border-radius:12px;padding:12px 14px;color:' + C.text + ';font-size:15px;font-family:Inter;outline:none;transition:border-color .2s" onfocus="this.style.borderColor=\'' + C.primary + '\'" onblur="this.style.borderColor=\'' + C.border + '\'"/></div>' +
+        '<div><input id="grpname" placeholder="اسم المجموعة" style="width:100%;background:' + C.surface + ';border:1px solid ' + C.border + ';border-radius:12px;padding:12px 14px;color:' + C.text + ';font-size:15px;font-family:Cairo;outline:none;transition:border-color .2s" onfocus="this.style.borderColor=\'' + C.primary + '\'" onblur="this.style.borderColor=\'' + C.border + '\'"/></div>' +
         '<div id="grpmembers"></div>' +
-        '<button style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;background:' + C.primary + ';color:#fff;width:100%;min-height:44px;font-family:Inter" onclick="Chat.createGroup()">' + ms('group_add',18) + ' إنشاء</button>' +
+        '<button style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;background:' + C.primary + ';color:#fff;width:100%;min-height:44px;font-family:Cairo" onclick="Chat.createGroup()">' + ms('group_add',18) + ' إنشاء</button>' +
       '</div>';
       showSheet(html);
       renderUserPicker();
@@ -1100,10 +1122,10 @@ const Chat = (() => {
     ov.innerHTML = '<div style="background:' + C.surface + ';border-radius:16px;width:90%;max-width:420px;max-height:85vh;display:flex;flex-direction:column;animation:fadeIn .2s;box-shadow:0 8px 24px rgba(15,23,42,0.08)" onclick="event.stopPropagation()">' +
       '<div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px 0"><h3 style="font-size:18px;font-weight:600;color:' + C.text + '">انضم برمز الدعوة</h3><button style="background:none;border:none;color:' + C.muted + ';padding:4px;cursor:pointer;border-radius:50%;font-size:18px" onclick="event.stopPropagation();this.closest(\'[data-ov]\').remove()">✕</button></div>' +
       '<div style="padding:16px 24px;overflow-y:auto;flex:1">' +
-        '<div><input id="jcode" placeholder="أدخل رمز الدعوة" style="width:100%;background:' + C.surface + ';border:1px solid ' + C.border + ';border-radius:12px;padding:12px 14px;color:' + C.text + ';font-size:15px;font-family:Inter;outline:none;transition:border-color .2s" onfocus="this.style.borderColor=\'' + C.primary + '\'" onblur="this.style.borderColor=\'' + C.border + '\'"/></div>' +
+        '<div><input id="jcode" placeholder="أدخل رمز الدعوة" style="width:100%;background:' + C.surface + ';border:1px solid ' + C.border + ';border-radius:12px;padding:12px 14px;color:' + C.text + ';font-size:15px;font-family:Cairo;outline:none;transition:border-color .2s" onfocus="this.style.borderColor=\'' + C.primary + '\'" onblur="this.style.borderColor=\'' + C.border + '\'"/></div>' +
         '<div id="jerr" style="color:' + C.error + ';font-size:12px;text-align:center;min-height:18px;margin-top:8px"></div>' +
       '</div>' +
-      '<div style="padding:0 24px 20px"><button style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;background:' + C.primary + ';color:#fff;width:100%;min-height:44px;font-family:Inter" onclick="Chat.joinViaCode()">' + ms('login',18) + ' انضمام</button></div>' +
+      '<div style="padding:0 24px 20px"><button style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;background:' + C.primary + ';color:#fff;width:100%;min-height:44px;font-family:Cairo" onclick="Chat.joinViaCode()">' + ms('login',18) + ' انضمام</button></div>' +
     '</div>';
     document.body.appendChild(ov);
   }
@@ -1137,7 +1159,7 @@ const Chat = (() => {
       '<div style="font-size:18px;font-weight:600;margin-bottom:2px;color:' + C.text + '">' + esc(name) + '</div>' +
       '<div style="font-size:13px;color:' + C.muted + ';margin-bottom:16px">' + esc(email) + (role ? ' · ' + role : '') + '</div>' +
       '<div style="display:flex;gap:12px">' +
-        '<button style="flex:1;padding:10px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;background:' + C.card + ';color:' + C.text + ';font-family:Inter" onclick="Chat.changeAvatar()">تغيير الصورة</button>' +
+        '<button style="flex:1;padding:10px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;background:' + C.card + ';color:' + C.text + ';font-family:Cairo" onclick="Chat.changeAvatar()">تغيير الصورة</button>' +
       '</div>' +
     '</div>';
     document.body.appendChild(ov);
@@ -1170,20 +1192,48 @@ const Chat = (() => {
   }
 
   function onNewMsg(data) {
-    if (currentConv && data.conversationId === currentConv.id) loadMsgs(currentConv.id);
+    if (currentConv && data.conversationId === currentConv.id) {
+      const idx = messages.findIndex(m => m.id === data.id);
+      if (idx === -1) {
+        messages.push(data); renderMsgs();
+        const list = el('msgs');
+        if (list && list.scrollTop >= list.scrollHeight - list.clientHeight - 50) markAsRead();
+      }
+    }
     loadConvs();
   }
   function onEdit(data) {
-    if (currentConv && data.conversationId === currentConv.id) loadMsgs(currentConv.id);
+    if (currentConv && data.conversationId === currentConv.id) {
+      const idx = messages.findIndex(m => m.id === data.id);
+      if (idx !== -1) { messages[idx] = data; renderMsgs(); }
+    }
   }
   function onDel(data) {
-    if (currentConv && data.conversationId === currentConv.id) loadMsgs(currentConv.id);
+    if (currentConv && data.conversationId === currentConv.id) {
+      messages = messages.filter(m => m.id !== data.messageId);
+      renderMsgs();
+    }
   }
   function onReact(data) {
-    if (currentConv && data.conversationId === currentConv.id) loadMsgs(currentConv.id);
+    if (currentConv && data.conversationId === currentConv.id) {
+      const msg = messages.find(m => m.id === data.messageId);
+      if (msg) {
+        if (!msg.reactions) msg.reactions = [];
+        const existing = msg.reactions.findIndex(r => r.userId === data.reaction.userId && r.emoji === data.reaction.emoji);
+        if (existing === -1) msg.reactions.push(data.reaction);
+        else msg.reactions[existing] = data.reaction;
+        renderMsgs();
+      }
+    }
   }
   function onReactRemove(data) {
-    if (currentConv && data.conversationId === currentConv.id) loadMsgs(currentConv.id);
+    if (currentConv && data.conversationId === currentConv.id) {
+      const msg = messages.find(m => m.id === data.messageId);
+      if (msg && msg.reactions) {
+        msg.reactions = msg.reactions.filter(r => !(r.userId === data.userId && r.emoji === data.emoji));
+        renderMsgs();
+      }
+    }
   }
   function onTyping(data) {
     if (currentConv && data.conversationId === currentConv.id && data.userId !== uid()) {
@@ -1222,9 +1272,6 @@ const Chat = (() => {
       }
       toast('تمت إزالتك من المجموعة');
     } else {
-      if (currentConv && data.conversationId === currentConv.id) {
-        loadMsgs(currentConv.id);
-      }
       loadConvs();
     }
   }
