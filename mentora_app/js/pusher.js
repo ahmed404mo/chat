@@ -29,14 +29,16 @@ const PusherManager = (() => {
 
   function subscribe(conversationId) {
     if (channels[conversationId]) return;
-    const channel = pusher.subscribe(`presence-conversation-${conversationId}`);
-    channel.bind('onMessageReceived', (data) => { try { Chat.onNewMsg(data); } catch(e) {} });
-    channel.bind('onMessageEdited', (data) => { try { Chat.onEdit(data); } catch(e) {} });
-    channel.bind('onMessageDeleted', (data) => { try { Chat.onDel(data); } catch(e) {} });
-    channel.bind('onReactionAdded', (data) => { try { Chat.onReact(data); } catch(e) {} });
-    channel.bind('onReactionRemoved', (data) => { try { Chat.onReact(data); } catch(e) {} });
-    channel.bind('onTyping', (data) => { try { Chat.onTyping(data); } catch(e) {} });
-    channel.bind('onRead', (data) => { try { Chat.onRead(data); } catch(e) {} });
+    const channel = pusher.subscribe(`private-conversation-${conversationId}`);
+    channel.bind('new-message', (data) => { try { Chat.onNewMsg(data); } catch(e) {} });
+    channel.bind('message-edited', (data) => { try { Chat.onEdit(data); } catch(e) {} });
+    channel.bind('message-deleted', (data) => { try { Chat.onDel(data); } catch(e) {} });
+    channel.bind('message-reaction-added', (data) => { try { Chat.onReact(data); } catch(e) {} });
+    channel.bind('message-reaction-removed', (data) => { try { Chat.onReactRemove(data); } catch(e) {} });
+    channel.bind('user-typing', (data) => { try { Chat.onTyping(data); } catch(e) {} });
+    channel.bind('user-stop-typing', (data) => { try { Chat.onTypingStop(data); } catch(e) {} });
+    channel.bind('messages-read', (data) => { try { Chat.onRead(data); } catch(e) {} });
+    channel.bind('member-removed', (data) => { try { Chat.onMemberRemoved(data); } catch(e) {} });
     channels[conversationId] = channel;
   }
 

@@ -7,28 +7,39 @@ const Auth = (() => {
 
   function showLogin() {
     document.body.innerHTML = '';
-    document.body.style.cssText = 'margin:0;height:100%;background:#111827;color:#f9fafb;font-family:sans-serif;direction:rtl';
+    document.body.style.cssText = 'margin:0;min-height:100vh;background:#f8f9ff;color:#0b1c30;font-family:Inter,sans-serif;direction:rtl;-webkit-font-smoothing:antialiased';
     document.body.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px">
-        <div style="width:100%;max-width:400px;background:#1f2937;border-radius:20px;padding:32px">
+      <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:#f8f9ff;background-image:radial-gradient(#d3e4fe 1px,transparent 1px);background-size:32px 32px">
+        <div style="width:100%;max-width:400px;background:#ffffff;border-radius:16px;border:1px solid #c3c6d7;padding:32px;box-shadow:0 8px 24px rgba(15,23,42,0.08);position:relative;z-index:1">
           <div style="text-align:center;margin-bottom:24px">
-            <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:inline-flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;margin-bottom:12px">M</div>
-            <h2 style="font-size:22px;margin-bottom:4px">تسجيل الدخول</h2>
-            <p style="color:#9ca3af;font-size:14px">أهلاً بك في Mentora</p>
+            <div style="width:64px;height:64px;border-radius:50%;background:#2563eb;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 4px 12px rgba(15,23,42,0.04)">
+              <span style="font-family:'Material Symbols Outlined';font-size:32px;color:#fff;font-variation-settings:'FILL' 1">business_center</span>
+            </div>
+            <h2 style="font-size:24px;font-weight:600;line-height:32px;letter-spacing:-0.01em;margin-bottom:4px;color:#0b1c30">تسجيل الدخول</h2>
+            <p style="font-size:14px;line-height:20px;color:#434655">أهلاً بك في Mentora</p>
           </div>
           <div id="ilogin" style="display:flex;flex-direction:column;gap:16px">
-            <div style="display:flex;flex-direction:column;gap:4px">
-              <label style="font-size:13px;color:#d1d5db">البريد الإلكتروني</label>
-              <input id="ilemail" type="email" placeholder="أدخل بريدك الإلكتروني" style="background:#374151;border:1px solid #4b5563;border-radius:12px;padding:12px 14px;color:#f9fafb;font-size:15px;outline:none"/>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label style="font-size:12px;line-height:16px;letter-spacing:0.05em;font-weight:500;color:#434655">البريد الإلكتروني</label>
+              <div style="position:relative;display:flex;align-items:center">
+                <span style="font-family:'Material Symbols Outlined';position:absolute;right:12px;font-size:20px;color:#737686;pointer-events:none">mail</span>
+                <input id="ilemail" type="email" placeholder="name@company.com" style="width:100%;background:#f8f9ff;border:1px solid #c3c6d7;border-radius:12px;padding:12px 42px 12px 14px;color:#0b1c30;font-size:14px;font-family:Inter;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#2563eb';this.style.boxShadow='0 0 0 2px rgba(37,99,235,.2)'" onblur="this.style.borderColor='#c3c6d7';this.style.boxShadow='none'"/>
+              </div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:4px">
-              <label style="font-size:13px;color:#d1d5db">كلمة المرور</label>
-              <input id="ilpass" type="password" placeholder="أدخل كلمة المرور" style="background:#374151;border:1px solid #4b5563;border-radius:12px;padding:12px 14px;color:#f9fafb;font-size:15px;outline:none"/>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <label style="font-size:12px;line-height:16px;letter-spacing:0.05em;font-weight:500;color:#434655">كلمة المرور</label>
+              </div>
+              <div style="position:relative;display:flex;align-items:center">
+                <span style="font-family:'Material Symbols Outlined';position:absolute;right:12px;font-size:20px;color:#737686;pointer-events:none">lock</span>
+                <input id="ilpass" type="password" placeholder="••••••••" style="width:100%;background:#f8f9ff;border:1px solid #c3c6d7;border-radius:12px;padding:12px 42px 12px 14px;color:#0b1c30;font-size:14px;font-family:Inter;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#2563eb';this.style.boxShadow='0 0 0 2px rgba(37,99,235,.2)'" onblur="this.style.borderColor='#c3c6d7';this.style.boxShadow='none'"/>
+                <span style="position:absolute;left:12px;cursor:pointer;display:flex;color:#737686;font-family:'Material Symbols Outlined';font-size:20px" onclick="var i=document.getElementById('ilpass');if(i.type==='password'){i.type='text';this.textContent='visibility'}else{i.type='password';this.textContent='visibility_off'}">visibility_off</span>
+              </div>
             </div>
-            <div id="ilogin-error" style="color:#ef4444;font-size:12px;text-align:center;min-height:18px"></div>
-            <button id="ilogin-btn" style="display:inline-flex;align-items:center;justify-content:center;padding:12px 20px;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;background:#3b82f6;color:#fff;width:100%">تسجيل الدخول</button>
+            <div id="ilogin-error" style="color:#ba1a1a;font-size:12px;text-align:center;min-height:18px"></div>
+            <button id="ilogin-btn" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;background:#2563eb;color:#fff;width:100%;min-height:44px;transition:all .2s;font-family:Inter">تسجيل الدخول</button>
           </div>
-          <p style="text-align:center;margin-top:16px;font-size:13px;color:#9ca3af">ليس لديك حساب؟ <a href="#" style="color:#3b82f6;text-decoration:none" onclick="Auth.showRegister();return false">إنشاء حساب</a></p>
+          <p style="text-align:center;margin-top:16px;font-size:14px;line-height:20px;color:#434655">ليس لديك حساب؟ <a href="#" style="color:#004ac6;font-weight:500;text-decoration:none" onclick="Auth.showRegister();return false">إنشاء حساب</a></p>
         </div>
       </div>
     `;
@@ -39,32 +50,44 @@ const Auth = (() => {
 
   function showRegister() {
     document.body.innerHTML = '';
-    document.body.style.cssText = 'margin:0;height:100%;background:#111827;color:#f9fafb;font-family:sans-serif;direction:rtl';
+    document.body.style.cssText = 'margin:0;min-height:100vh;background:#f8f9ff;color:#0b1c30;font-family:Inter,sans-serif;direction:rtl;-webkit-font-smoothing:antialiased';
     document.body.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px">
-        <div style="width:100%;max-width:400px;background:#1f2937;border-radius:20px;padding:32px">
+      <div style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:#f8f9ff;background-image:radial-gradient(#d3e4fe 1px,transparent 1px);background-size:32px 32px">
+        <div style="width:100%;max-width:400px;background:#ffffff;border-radius:16px;border:1px solid #c3c6d7;padding:32px;box-shadow:0 8px 24px rgba(15,23,42,0.08);position:relative;z-index:1">
           <div style="text-align:center;margin-bottom:24px">
-            <div style="width:56px;height:56px;border-radius:16px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:inline-flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;margin-bottom:12px">M</div>
-            <h2 style="font-size:22px;margin-bottom:4px">إنشاء حساب</h2>
-            <p style="color:#9ca3af;font-size:14px">انضم إلى Mentora</p>
+            <div style="width:64px;height:64px;border-radius:50%;background:#2563eb;display:inline-flex;align-items:center;justify-content:center;margin-bottom:16px;box-shadow:0 4px 12px rgba(15,23,42,0.04)">
+              <span style="font-family:'Material Symbols Outlined';font-size:32px;color:#fff;font-variation-settings:'FILL' 1">corporate_fare</span>
+            </div>
+            <h2 style="font-size:24px;font-weight:600;line-height:32px;letter-spacing:-0.01em;margin-bottom:4px;color:#0b1c30">إنشاء حساب</h2>
+            <p style="font-size:14px;line-height:20px;color:#434655">انضم إلى Mentora</p>
           </div>
           <div id="ireg" style="display:flex;flex-direction:column;gap:16px">
-            <div style="display:flex;flex-direction:column;gap:4px">
-              <label style="font-size:13px;color:#d1d5db">الاسم</label>
-              <input id="irname" type="text" placeholder="الاسم الكامل" style="background:#374151;border:1px solid #4b5563;border-radius:12px;padding:12px 14px;color:#f9fafb;font-size:15px;outline:none"/>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label style="font-size:12px;line-height:16px;letter-spacing:0.05em;font-weight:500;color:#434655">الاسم</label>
+              <div style="position:relative;display:flex;align-items:center">
+                <span style="font-family:'Material Symbols Outlined';position:absolute;right:12px;font-size:20px;color:#737686;pointer-events:none">person</span>
+                <input id="irname" type="text" placeholder="الاسم الكامل" style="width:100%;background:#f8f9ff;border:1px solid #c3c6d7;border-radius:12px;padding:12px 42px 12px 14px;color:#0b1c30;font-size:14px;font-family:Inter;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#2563eb';this.style.boxShadow='0 0 0 2px rgba(37,99,235,.2)'" onblur="this.style.borderColor='#c3c6d7';this.style.boxShadow='none'"/>
+              </div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:4px">
-              <label style="font-size:13px;color:#d1d5db">البريد الإلكتروني</label>
-              <input id="iremail" type="email" placeholder="أدخل بريدك الإلكتروني" style="background:#374151;border:1px solid #4b5563;border-radius:12px;padding:12px 14px;color:#f9fafb;font-size:15px;outline:none"/>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label style="font-size:12px;line-height:16px;letter-spacing:0.05em;font-weight:500;color:#434655">البريد الإلكتروني</label>
+              <div style="position:relative;display:flex;align-items:center">
+                <span style="font-family:'Material Symbols Outlined';position:absolute;right:12px;font-size:20px;color:#737686;pointer-events:none">mail</span>
+                <input id="iremail" type="email" placeholder="name@company.com" style="width:100%;background:#f8f9ff;border:1px solid #c3c6d7;border-radius:12px;padding:12px 42px 12px 14px;color:#0b1c30;font-size:14px;font-family:Inter;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#2563eb';this.style.boxShadow='0 0 0 2px rgba(37,99,235,.2)'" onblur="this.style.borderColor='#c3c6d7';this.style.boxShadow='none'"/>
+              </div>
             </div>
-            <div style="display:flex;flex-direction:column;gap:4px">
-              <label style="font-size:13px;color:#d1d5db">كلمة المرور</label>
-              <input id="irpass" type="password" placeholder="أدخل كلمة المرور" style="background:#374151;border:1px solid #4b5563;border-radius:12px;padding:12px 14px;color:#f9fafb;font-size:15px;outline:none"/>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <label style="font-size:12px;line-height:16px;letter-spacing:0.05em;font-weight:500;color:#434655">كلمة المرور</label>
+              <div style="position:relative;display:flex;align-items:center">
+                <span style="font-family:'Material Symbols Outlined';position:absolute;right:12px;font-size:20px;color:#737686;pointer-events:none">lock</span>
+                <input id="irpass" type="password" placeholder="••••••••" style="width:100%;background:#f8f9ff;border:1px solid #c3c6d7;border-radius:12px;padding:12px 42px 12px 14px;color:#0b1c30;font-size:14px;font-family:Inter;outline:none;transition:border-color .2s" onfocus="this.style.borderColor='#2563eb';this.style.boxShadow='0 0 0 2px rgba(37,99,235,.2)'" onblur="this.style.borderColor='#c3c6d7';this.style.boxShadow='none'"/>
+                <span style="position:absolute;left:12px;cursor:pointer;display:flex;color:#737686;font-family:'Material Symbols Outlined';font-size:20px" onclick="var i=document.getElementById('irpass');if(i.type==='password'){i.type='text';this.textContent='visibility'}else{i.type='password';this.textContent='visibility_off'}">visibility_off</span>
+              </div>
             </div>
-            <div id="ireg-error" style="color:#ef4444;font-size:12px;text-align:center;min-height:18px"></div>
-            <button id="ireg-btn" style="display:inline-flex;align-items:center;justify-content:center;padding:12px 20px;border:none;border-radius:12px;font-size:15px;font-weight:600;cursor:pointer;background:#3b82f6;color:#fff;width:100%">إنشاء حساب</button>
+            <div id="ireg-error" style="color:#ba1a1a;font-size:12px;text-align:center;min-height:18px"></div>
+            <button id="ireg-btn" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 20px;border:none;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;background:#2563eb;color:#fff;width:100%;min-height:44px;transition:all .2s;font-family:Inter">إنشاء حساب</button>
           </div>
-          <p style="text-align:center;margin-top:16px;font-size:13px;color:#9ca3af">لديك حساب؟ <a href="#" style="color:#3b82f6;text-decoration:none" onclick="Auth.showLogin();return false">تسجيل الدخول</a></p>
+          <p style="text-align:center;margin-top:16px;font-size:14px;line-height:20px;color:#434655">لديك حساب؟ <a href="#" style="color:#004ac6;font-weight:500;text-decoration:none" onclick="Auth.showLogin();return false">تسجيل الدخول</a></p>
         </div>
       </div>
     `;
