@@ -11,6 +11,15 @@ on:
         options:
           - debug
           - release
+  push:
+    branches: [main]
+    paths:
+      - 'mentora_app/**'
+      - 'android/**'
+      - 'capacitor.config.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/HtmlMobile.yml'
 
 jobs:
   build:
@@ -39,10 +48,10 @@ jobs:
           npx cap sync
 
       - name: Build debug APK
-        if: inputs.build-type == 'debug'
+        if: inputs.build-type == 'debug' || github.event_name == 'push'
         run: |
-          cd android
-          ./gradlew assembleDebug
+          chmod +x android/gradlew
+          cd android && ./gradlew assembleDebug
 
       - name: Build release AAB
         if: inputs.build-type == 'release'
@@ -53,16 +62,16 @@ jobs:
           KEYSTORE_ALIAS_PASSWORD: ${{ secrets.KEYSTORE_ALIAS_PASSWORD }}
         run: |
           echo "$KEYSTORE_B64" | base64 -d > android/app/keystore.jks 2>/dev/null || true
-          cd android
-          ./gradlew bundleRelease
+          chmod +x android/gradlew
+          cd android && ./gradlew bundleRelease
 
       - name: Upload APK artifact
-        if: inputs.build-type == 'debug'
+        if: inputs.build-type == 'debug' || github.event_name == 'push'
         uses: actions/upload-artifact@v4
         with:
           name: mentora-debug-apk
           path: android/app/build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Upload AAB artifact
         if: inputs.build-type == 'release'
@@ -70,4 +79,4 @@ jobs:
         with:
           name: mentora-release-aab
           path: android/app/build/outputs/bundle/release/*.aab
-          if-no-files-found: error
+          if-no-files-found: warn
