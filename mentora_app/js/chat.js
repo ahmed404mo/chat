@@ -559,7 +559,7 @@ const Chat = (() => {
   async function delMsg(msgId) {
     if (!(await showConfirm('حذف هذه الرسالة؟'))) return;
     try {
-      await API.post('/chat/messages/delete', { messageId: msgId, forEveryone: true });
+      await API.post('/chat/messages/delete', { messageId: msgId, conversationId: currentConv?.id, forEveryone: true });
       messages = messages.filter(m => m.id !== msgId);
       renderMsgs();
     } catch (e) { toast(e.message); }

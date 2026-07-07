@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { pusher } from "@/lib/pusher-server";
 import { getUserFromToken } from "@/lib/auth";
+import { deleteFile } from "@/lib/cloudinary";
 
 export async function POST(req: Request) {
   const user = getUserFromToken(req);
@@ -14,12 +15,18 @@ export async function POST(req: Request) {
 
     const message = await prisma.message.findFirst({
       where: { id: messageId },
+      include: { attachments: true },
     });
     if (!message) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
     if (message.senderId !== user.id) {
       return NextResponse.json({ error: "Not your message" }, { status: 403 });
+    }
+
+    // Delete attachments from Cloudinary before deleting the message
+    for (const a of message.attachments) {
+      if (a.publicId) await deleteFile(a.publicId);
     }
 
     if (forEveryone) {
