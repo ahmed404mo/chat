@@ -28,17 +28,21 @@ export async function GET(req: Request) {
 
   try {
     const publicId = getPublicIdFromUrl(fileUrl);
-    if (publicId) {
-      const signedUrl = cloudinary.url(publicId, {
-        sign_url: true,
-        secure: true,
-        resource_type: "image",
-        type: "upload",
-      });
-      return NextResponse.redirect(signedUrl);
+    if (!publicId) {
+      return NextResponse.json({ error: "Could not extract public ID" }, { status: 400 });
     }
 
-    return NextResponse.json({ error: "Could not extract public ID" }, { status: 400 });
+    const formatMatch = fileUrl.match(/\.(\w+)(?:\?.+)?$/);
+    const format = formatMatch ? formatMatch[1] : undefined;
+
+    const signedUrl = cloudinary.url(publicId, {
+      sign_url: true,
+      secure: true,
+      resource_type: "image",
+      type: "upload",
+      format,
+    });
+    return NextResponse.redirect(signedUrl);
   } catch {
     return NextResponse.json({ error: "Failed to download file" }, { status: 500 });
   }

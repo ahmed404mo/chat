@@ -41,9 +41,15 @@ export async function uploadFile(
 
 export function getPublicIdFromUrl(url: string): string | null {
   try {
-    const urlObj = new URL(url);
-    const match = urlObj.pathname.match(/\/upload\/v\d+\/(.+)\.\w+$/);
-    return match ? match[1] : null;
+    const u = new URL(url);
+    const parts = u.pathname.split('/');
+    const uploadIndex = parts.findIndex(p => p === 'upload');
+    if (uploadIndex === -1) return null;
+    let rest = parts.slice(uploadIndex + 1);
+    if (/^v\d+$/.test(rest[0])) rest = rest.slice(1);
+    let publicPath = rest.join('/');
+    publicPath = publicPath.replace(/\.[^/.]+$/, '');
+    return decodeURIComponent(publicPath);
   } catch {
     return null;
   }
