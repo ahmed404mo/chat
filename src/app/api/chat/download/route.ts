@@ -1,30 +1,44 @@
 import { NextResponse } from "next/server";
-import { getUserFromToken } from "@/lib/auth";
+import { getUserFromToken, type JwtPayload } from "@/lib/auth";
+import jwt from "jsonwebtoken";
+import { v2 as cloudinary } from "cloudinary";
+import { getPublicIdFromUrl } from "@/lib/cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function GET(req: Request) {
-  const user = getUserFromToken(req);
+  const { searchParams } = new URL(req.url);
+  const token = searchParams.get("token") || "";
+  let user = getUserFromToken(req);
+  if (!user && token) {
+    try { user = jwt.verify(token, process.env.USER_TOKEN_SECRET_KEY!) as JwtPayload; } catch {}
+  }
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { searchParams } = new URL(req.url);
   const fileUrl = searchParams.get("url");
   if (!fileUrl) {
     return NextResponse.json({ error: "url parameter is required" }, { status: 400 });
   }
 
   try {
-    const res = await fetch(fileUrl);
-    if (!res.ok) {
-      return NextResponse.json({ error: "Failed to fetch file" }, { status: 502 });
+    const publicId = getPublicIdFromUrl(fileUrl);
+    if (publicId) {
+      const signedUrl = cloudinary.url(publicId, {
+        sign_url: true,
+        secure: true,
+        resource_type: "image",
+        type: "upload",
+      });
+      return NextResponse.redirect(signedUrl);
     }
-    const blob = await res.blob();
-    return new NextResponse(blob, {
-      headers: {
-        "Content-Type": res.headers.get("Content-Type") || "application/octet-stream",
-        "Content-Disposition": 'attachment; filename="file"',
-      },
-    });
+
+    return NextResponse.json({ error: "Could not extract public ID" }, { status: 400 });
   } catch {
     return NextResponse.json({ error: "Failed to download file" }, { status: 500 });
   }

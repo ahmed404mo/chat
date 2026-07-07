@@ -841,19 +841,8 @@ const Chat = (() => {
 
   function openFile(url) {
     const token = API.getToken();
-    if (!token) { window.open(url, '_blank'); return; }
-    fetch(API.BASE + '/chat/download?url=' + encodeURIComponent(url), { headers: { 'Authorization': 'Bearer ' + token } })
-      .then(r => { if (!r.ok) throw new Error(); return r.blob(); })
-      .then(blob => {
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = '';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(a.href), 120000);
-      })
-      .catch(() => window.open(url, '_blank'));
+    const proxyUrl = API.BASE + '/chat/download?url=' + encodeURIComponent(url) + '&token=' + encodeURIComponent(token || '');
+    window.open(proxyUrl, '_blank');
   }
 
   function previewImage(url) {
