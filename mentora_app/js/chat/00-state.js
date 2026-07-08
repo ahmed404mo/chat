@@ -154,12 +154,19 @@ function hideNetBar() {
   window.addEventListener('offline', () => showNetBar('لا يوجد اتصال بالإنترنت', C.error));
 })();
 
+let backTimer = null;
 try {
   const cap = window.Capacitor;
   if (cap && cap.isNative && cap.Plugins?.App) {
-    cap.Plugins.App.addListener('backButton', ({ canGoBack }) => {
-      if (currentConv) showChats();
-      else if (!canGoBack) cap.Plugins.App.exitApp();
+    cap.Plugins.App.addListener('backButton', () => {
+      if (currentConv) { showChats(); }
+      else if (!backTimer) {
+        backTimer = setTimeout(() => backTimer = null, 2000);
+        toast('اضغط مرة أخرى للخروج');
+      } else {
+        clearTimeout(backTimer); backTimer = null;
+        cap.Plugins.App.exitApp();
+      }
     });
   }
 } catch(e) {}

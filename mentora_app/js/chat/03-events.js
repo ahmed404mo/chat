@@ -7,8 +7,12 @@ function onNewMsg(data) {
       if (list && list.scrollTop >= list.scrollHeight - list.clientHeight - 50) markAsRead();
     }
   }
-  if (data.mentionedUserIds?.includes(uid()) && (!currentConv || data.conversationId !== currentConv.id)) {
-    toast('@ ' + (data.sender?.name||'شخص') + ' منشنك في ' + (data.conversation?.title||'المجموعة'));
+  if (data.mentionedUserIds?.includes(uid())) {
+    const conv = conversations.find(c => c.id === data.conversationId);
+    if (conv) conv.hasMention = true;
+    if (!currentConv || data.conversationId !== currentConv.id) {
+      toast('@ ' + (data.sender?.name||'شخص') + ' منشنك في ' + (data.conversation?.title||'المجموعة'));
+    }
   }
   loadConvs();
 }

@@ -129,7 +129,15 @@ function renderAtts(atts, isMine) {
         '<span style="flex-shrink:0;opacity:.5;display:flex">' + ms('mic',14) + '</span>' +
       '</div>';
     }
-    return '<div style="display:flex;align-items:center;gap:8px;padding:8px;background:' + (isMine ? 'rgba(0,0,0,.1)' : C.card) + ';border-radius:8px;margin-top:4px;cursor:pointer" onclick="event.stopPropagation();Chat.openFile(\'' + esc(a.url) + '\')"><span style="display:flex">' + ms('attach_file',16) + '</span><span style="font-size:13px;font-weight:500;' + txtColor + '">' + esc(a.fileName||'ملف') + '</span></div>';
+    const isDoc = /pdf|word|powerpoint|document|presentation|spreadsheet|sheet/i.test(mime) || /\.(pdf|doc|docx|ppt|pptx|xls|xlsx)$/i.test(a.fileName||'');
+    const fileIcon = mime.includes('pdf') ? 'picture_as_pdf' : (mime.includes('presentation') || mime.includes('powerpoint') ? 'slideshow' : (mime.includes('spreadsheet') || mime.includes('sheet') ? 'table_rows' : 'attach_file'));
+    const cursor = isDoc ? 'default' : 'pointer';
+    const onClick = isDoc ? '' : ' onclick="event.stopPropagation();Chat.openFile(\'' + esc(a.url) + '\')"';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px;background:' + (isMine ? 'rgba(0,0,0,.1)' : C.card) + ';border-radius:8px;margin-top:4px;cursor:' + cursor + '"' + onClick + '>' +
+      '<span style="display:flex">' + ms(fileIcon,18) + '</span>' +
+      '<span style="font-size:13px;font-weight:500;' + txtColor + ';flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(a.fileName||'ملف') + '</span>' +
+      (isDoc ? '<span style="display:flex;cursor:pointer;flex-shrink:0;opacity:.7;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.7" onclick="event.stopPropagation();Chat.openFile(\'' + esc(a.url) + '\')">' + ms('download',18) + '</span>' : '') +
+    '</div>';
   }).join('');
 }
 

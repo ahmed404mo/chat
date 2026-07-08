@@ -243,9 +243,15 @@ async function genInvite() {
 }
 
 async function leaveGroup(convId) {
-  if (!(await showConfirm('تأكيد?'))) return;
+  const user = API.getUser();
+  const isAdmin = user?.role === 'admin' || user?.role === 'HR';
+  if (!(await showConfirm(isAdmin ? 'حذف المجموعة بالكامل؟' : 'مغادرة المجموعة؟'))) return;
   try {
-    await API.del('/chat/conversations/' + convId);
+    if (isAdmin) {
+      await API.del('/chat/conversations/' + convId);
+    } else {
+      await API.del('/chat/conversations/' + convId + '/members', { userId: uid() });
+    }
     try { PusherManager.unsubscribe(convId); } catch(e) {}
     showChats();
     loadConvs();

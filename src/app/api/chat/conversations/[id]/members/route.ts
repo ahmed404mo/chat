@@ -126,12 +126,6 @@ export async function DELETE(
   if (!user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!canManageChats(user.role)) {
-    return NextResponse.json(
-      { error: "Only Admin and HR can remove members" },
-      { status: 403 }
-    );
-  }
 
   try {
     const { id } = await params;
@@ -144,10 +138,12 @@ export async function DELETE(
       );
     }
 
-    if (userId === user.id) {
+    const isSelfRemoval = userId === user.id;
+
+    if (!isSelfRemoval && !canManageChats(user.role)) {
       return NextResponse.json(
-        { error: "Cannot remove yourself. Use leave instead." },
-        { status: 400 }
+        { error: "Only Admin and HR can remove other members" },
+        { status: 403 }
       );
     }
 
@@ -161,7 +157,7 @@ export async function DELETE(
       );
     }
 
-    if (user.role !== "admin") {
+    if (!isSelfRemoval && user.role !== "admin") {
       const isParticipant = await prisma.conversationParticipant.findFirst({
         where: { conversationId: id, userId: user.id },
       });
