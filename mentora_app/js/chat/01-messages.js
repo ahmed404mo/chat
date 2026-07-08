@@ -374,8 +374,7 @@ function openFile(url) {
   const proxyUrl = API.BASE + '/chat/download?url=' + encodeURIComponent(url) + '&token=' + encodeURIComponent(token || '') + '&download=1';
   const a = document.createElement('a');
   a.href = proxyUrl;
-  a.target = '_blank';
-  a.rel = 'noopener noreferrer';
+  a.download = '';
   a.click();
 }
 

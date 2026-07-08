@@ -8,8 +8,7 @@ function onNewMsg(data) {
     }
   }
   if (data.mentionedUserIds?.includes(uid())) {
-    const conv = conversations.find(c => c.id === data.conversationId);
-    if (conv) conv.hasMention = true;
+    mentionedConvs.add(data.conversationId);
     if (!currentConv || data.conversationId !== currentConv.id) {
       toast('@ ' + (data.sender?.name||'شخص') + ' منشنك في ' + (data.conversation?.title||'المجموعة'));
     }

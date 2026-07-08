@@ -31,7 +31,7 @@ async function loadConvs(silent) {
       const part = (c.participants||[]).find(p => p.user?.id !== u);
       const title = c.isGroup ? c.title : part?.user?.name || c.title;
       const last = c.messages?.[0];
-      if (c.hasMention === undefined) c.hasMention = (Array.isArray(c.messages) && c.messages.some(m => m.mentionedUserIds?.includes(u))) || false;
+      if (!mentionedConvs.has(c.id) && Array.isArray(c.messages) && c.messages.some(m => m.mentionedUserIds?.includes(u))) mentionedConvs.add(c.id);
       let previewHtml = '';
       if (last) {
         const senderTag = (c.isGroup && last.sender?.name && last.senderId !== u) ? '<span style="color:' + userColor(last.senderId) + ';font-weight:600">' + esc(last.sender.name) + '</span>: ' : '';
@@ -50,7 +50,7 @@ async function loadConvs(silent) {
           '<div style="font-size:13px;color:' + C.muted + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + previewHtml + '</div>' +
         '</div>' +
         '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">' +
-          (c.hasMention ? '<div style="font-size:11px;color:' + C.primary + ';font-weight:700">@</div>' : '') +
+          (mentionedConvs.has(c.id) ? '<div style="font-size:11px;color:' + C.primary + ';font-weight:700">@</div>' : '') +
           '<div style="font-size:11px;color:' + C.muted + '">' + time + '</div>' +
           ((c.unreadCount||0) > 0 ? '<div style="background:' + C.primary + ';color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;font-weight:600">' + c.unreadCount + '</div>' : '') +
         '</div>' +
@@ -67,7 +67,7 @@ async function loadConvs(silent) {
 async function openConv(id) {
   if (convPoll) { clearInterval(convPoll); convPoll = null; }
   currentConv = conversations.find(c => c.id === id) || { id };
-  if (currentConv) currentConv.hasMention = false;
+  mentionedConvs.delete(id);
   const u = uid();
   const part = (currentConv.participants||[]).find(p => p.user?.id !== u);
   const title = currentConv.isGroup ? currentConv.title : part?.user?.name || currentConv.title;

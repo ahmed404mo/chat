@@ -15,6 +15,7 @@ let typingTimeout = null;
 let wasTyping = false;
 let convPoll = null;
 let mentionStart = -1;
+let mentionedConvs = new Set();
 let mentionFilter = '';
 let mentionSel = -1;
 
