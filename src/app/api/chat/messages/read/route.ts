@@ -15,11 +15,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "conversationId is required" }, { status: 400 });
     }
 
+    const readMsgIds = (await prisma.messageRead.findMany({
+      where: { userId: user.id, message: { conversationId } },
+      select: { messageId: true },
+    })).map(r => r.messageId);
     const unreadMessages = await prisma.message.findMany({
       where: {
         conversationId,
         senderId: { not: user.id },
-        readBy: { none: { userId: user.id } },
+        ...(readMsgIds.length ? { id: { notIn: readMsgIds } } : {}),
       },
       select: { id: true },
     });

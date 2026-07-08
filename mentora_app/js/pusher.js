@@ -29,6 +29,7 @@ const PusherManager = (() => {
 
   function subscribe(conversationId) {
     if (channels[conversationId]) return;
+    if (!pusher) connect();
     const channel = pusher.subscribe(`private-conversation-${conversationId}`);
     channel.bind('new-message', (data) => { try { Chat.onNewMsg(data); } catch(e) {} });
     channel.bind('message-edited', (data) => { try { Chat.onEdit(data); } catch(e) {} });
@@ -44,7 +45,7 @@ const PusherManager = (() => {
 
   function unsubscribe(conversationId) {
     if (channels[conversationId]) {
-      pusher.unsubscribe(`presence-conversation-${conversationId}`);
+      pusher.unsubscribe(`private-conversation-${conversationId}`);
       delete channels[conversationId];
     }
   }

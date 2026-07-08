@@ -27,6 +27,7 @@ export async function sendPushNotification(
   title: string,
   body: string,
   data?: Record<string, string>,
+  badge?: number,
 ) {
   const app = getFirebaseApp();
   if (!app || deviceTokens.length === 0) return;
@@ -43,6 +44,7 @@ export async function sendPushNotification(
         priority: "high" as const,
         visibility: "public" as const,
         sound: "default",
+        notificationCount: badge || 0,
       },
     },
     data: data || {},

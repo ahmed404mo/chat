@@ -12,33 +12,56 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized or missing User ID" }, { status: 401 });
   }
 
-  console.log(`[GET conversations] user: ${user.id}, role: ${user.role}`);
-  const conversations = await prisma.conversation.findMany({
-    where: { participants: { some: { userId: user.id } } },
-    include: {
-      participants: {
-        include: {
-          user: { select: { id: true, name: true, role: true } },
+  try {
+    const conversations = await prisma.conversation.findMany({
+      where: { participants: { some: { userId: user.id } } },
+      include: {
+        participants: {
+          include: {
+            user: { select: { id: true, name: true, role: true } },
+          },
+        },
+        messages: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          include: {
+            sender: { select: { id: true, name: true, role: true } },
+            attachments: true,
+          },
+        },
+        inviteCodes: {
+          where: { isActive: true },
+          select: { id: true, code: true, expiresAt: true, maxUses: true, usedCount: true, isActive: true },
+          take: 5,
         },
       },
-      messages: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-        include: {
-          sender: { select: { id: true, name: true, role: true } },
-          attachments: true,
-        },
-      },
-      inviteCodes: {
-        where: { isActive: true },
-        select: { id: true, code: true, expiresAt: true, maxUses: true, usedCount: true, isActive: true },
-        take: 5,
-      },
-    },
-    orderBy: { updatedAt: "desc" },
-  });
+      orderBy: { updatedAt: "desc" },
+    });
 
-  return NextResponse.json({ conversations });
+    const readMsgIds = (await prisma.messageRead.findMany({
+      where: { userId: user.id },
+      select: { messageId: true },
+    })).map(r => r.messageId);
+    const convIds = conversations.map(c => c.id);
+    const unreadMessages = await prisma.message.findMany({
+      where: {
+        conversationId: { in: convIds },
+        senderId: { not: user.id },
+        ...(readMsgIds.length ? { id: { notIn: readMsgIds } } : {}),
+      },
+      select: { conversationId: true },
+    });
+    const unreadMap: Record<string, number> = {};
+    unreadMessages.forEach(m => {
+      unreadMap[m.conversationId] = (unreadMap[m.conversationId] || 0) + 1;
+    });
+    const result = conversations.map(c => ({ ...c, unreadCount: unreadMap[c.id] || 0 }));
+
+    return NextResponse.json({ conversations: result });
+  } catch (err) {
+    console.error("[GET conversations] Error:", err);
+    return NextResponse.json({ error: err instanceof Error ? err.message : "Internal server error" }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {

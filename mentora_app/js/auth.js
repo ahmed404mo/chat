@@ -1,8 +1,15 @@
 const Auth = (() => {
   function init() {
     const token = API.getToken();
-    if (token) Chat.showChats();
-    else showLogin();
+    if (token) {
+      try { PusherManager.connect(); } catch (e) { console.warn('Pusher:', e); }
+      Chat.showChats();
+      registerNativePush(token);
+    } else showLogin();
+    if (pendingNav) {
+      Chat.openConv(pendingNav);
+      pendingNav = null;
+    }
   }
 
   function showLogin() {
@@ -140,6 +147,50 @@ const Auth = (() => {
   function finishLogin() {
     try { PusherManager.connect(); } catch (e) { console.warn('Pusher:', e); }
     Chat.showChats();
+    registerNativePush(API.getToken());
+    if (pendingNav) {
+      Chat.openConv(pendingNav);
+      pendingNav = null;
+    }
+  }
+
+  async function registerNativePush(token) {
+    try {
+      const cap = window.Capacitor;
+      if (!cap || !cap.isNative || !cap.Plugins?.PushNotifications) return;
+      const PN = cap.Plugins.PushNotifications;
+      const permResult = await PN.requestPermissions();
+      if (permResult.receive !== 'granted') return;
+      PN.addListener('pushNotificationActionPerformed', (action) => {
+        const data = action.notification.data;
+        if (data?.conversationId) {
+          const event = new CustomEvent('navigate-conversation', {
+            detail: { conversationId: data.conversationId },
+          });
+          window.dispatchEvent(event);
+        }
+      });
+      PN.addListener('registration', (pushToken) => {
+        fetch('/api/push/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ token: pushToken.value, platform: 'android' }),
+        }).catch(() => {});
+      });
+      try {
+        await PN.createChannel({
+          id: 'mentora-messages',
+          name: 'Messages',
+          description: 'New message notifications',
+          importance: 4,
+          visibility: 1,
+          sound: 'default',
+          vibration: true,
+          lights: true,
+        });
+      } catch (e) {}
+      await PN.register();
+    } catch (e) {}
   }
 
   function logout() {
