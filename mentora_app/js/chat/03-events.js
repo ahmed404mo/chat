@@ -8,7 +8,7 @@ function onNewMsg(data) {
     }
   }
   if (data.mentionedUserIds?.includes(uid()) && (!currentConv || data.conversationId !== currentConv.id)) {
-    toast((data.sender?.name||'شخص') + ' منشنك في ' + (data.conversation?.title||'المجموعة'));
+    toast('@ ' + (data.sender?.name||'شخص') + ' منشنك في ' + (data.conversation?.title||'المجموعة'));
   }
   loadConvs();
 }

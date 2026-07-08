@@ -26,13 +26,13 @@ function renderMsgs() {
   const u = uid();
   list.innerHTML = messages.map(m => {
     const isMine = m.senderId === u;
+    const isMentioned = m.mentionedUserIds?.includes(u) && !isMine;
     const justify = isMine ? 'justify-content:flex-start' : 'justify-content:flex-end';
     const bg = isMine ? 'background:' + C.bubbleSelf + ';border-radius:16px 16px 4px 16px' : 'background:' + C.bubbleOther + ';border-radius:16px 16px 16px 4px';
     const txtColor = isMine ? 'color:#fff' : 'color:' + C.onBubbleOther;
     const metaColor = isMine ? 'color:rgba(255,255,255,.7)' : 'color:' + C.muted;
     const senderName = (!isMine && currentConv?.isGroup && m.sender?.name) ? '<div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><div style="width:18px;height:18px;border-radius:50%;background:' + userColor(m.senderId) + ';display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:700;color:#fff;flex-shrink:0">' + esc(m.sender.name[0]||'') + '</div><span style="font-size:11px;color:' + userColor(m.senderId) + ';font-weight:600">' + esc(m.sender.name) + '</span></div>' : '';
     const attHtml = renderAtts(m.attachments, isMine);
-    const isMentioned = m.mentionedUserIds?.includes(u);
     const contHtml = m.content ? '<div style="font-size:15px;line-height:1.4;white-space:pre-wrap;word-break:break-word;' + txtColor + '">' + (isMentioned ? highlightMentions(esc(m.content), C.primary) : esc(m.content)) + '</div>' : '';
     const edited = m.isEdited ? '<div style="font-size:10px;' + metaColor + ';margin-top:1px">تم التعديل</div>' : '';
     const reactHtml = m.reactions?.length ? renderReacts(m.reactions, m.id, isMine) : '';

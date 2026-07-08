@@ -49,6 +49,7 @@ async function loadConvs(silent) {
           '<div style="font-size:13px;color:' + C.muted + ';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + previewHtml + '</div>' +
         '</div>' +
         '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0">' +
+          (last && last.mentionedUserIds?.includes(u) ? '<div style="font-size:11px;color:' + C.primary + ';font-weight:700">@</div>' : '') +
           '<div style="font-size:11px;color:' + C.muted + '">' + time + '</div>' +
           ((c.unreadCount||0) > 0 ? '<div style="background:' + C.primary + ';color:#fff;font-size:11px;padding:2px 7px;border-radius:10px;font-weight:600">' + c.unreadCount + '</div>' : '') +
         '</div>' +
